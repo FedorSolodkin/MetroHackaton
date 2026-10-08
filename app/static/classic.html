@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Красная линия: управление интервалами</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--soft:#f0f2f5;--tx:#1b1b1f;--mut:#8a8f98;--red:#e5372b;--redbg:#fdecea;--grn:#1f9d55;--grnbg:#e6f6ec;--blu:#2f6fed;--blubg:#eef4ff;--line:#d9dde3;--ln:#d6083b;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15171a;--card:#202327;--soft:#2a2e33;--tx:#f2f3f5;--mut:#8f959e;--redbg:#3a1f1d;--grnbg:#173323;--blubg:#1c2740;--line:#3a3f46}}
+:root[data-theme="dark"]{--bg:#15171a;--card:#202327;--soft:#2a2e33;--tx:#f2f3f5;--mut:#8f959e;--redbg:#3a1f1d;--grnbg:#173323;--blubg:#1c2740;--line:#3a3f46}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 "YS Text","Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:16px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.logo{display:flex;align-items:center;gap:10px;font-size:26px;font-weight:700;letter-spacing:-.5px;margin-right:12px}
+.logo i{width:36px;height:36px;border-radius:50%;background:var(--ln);color:#fff;display:grid;place-items:center;font-style:normal;font-size:20px}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{border:0;background:transparent;color:var(--tx);font:inherit;font-weight:500;padding:9px 16px;border-radius:999px;cursor:pointer}
+.pill.on{background:var(--soft)}
+.pill:focus-visible,.st:focus-visible,.card:focus-visible{outline:2px solid var(--blu);outline-offset:2px}
+.upd{margin-left:auto;color:var(--mut);font-size:14px;display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--grn)}
+.panel{background:var(--card);border-radius:28px;padding:24px}
+.hero{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+.big{font-size:84px;font-weight:600;letter-spacing:-3px;line-height:1}
+.big.up{color:var(--red)}.big.down{color:var(--grn)}
+.hero h2{margin:0 0 4px;font-size:22px}.hero p{margin:0;font-size:18px;font-weight:600}
+.meta{margin-top:14px;color:var(--mut);display:flex;gap:18px;flex-wrap:wrap;font-size:15px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 0}
+.chip{background:var(--soft);border:0;color:var(--tx);font:inherit;padding:11px 18px;border-radius:999px;cursor:pointer}
+.chip.on{background:var(--tx);color:var(--bg)}
+.row{display:flex;gap:12px;overflow-x:auto;padding:4px 0;margin:20px 0 0}
+.card{flex:1 0 280px;background:var(--blubg);border-radius:22px;padding:18px}
+.card h3{margin:0 0 6px;font-size:20px}.card p{margin:0;color:var(--mut);font-size:15px}
+.hours{display:flex;gap:4px;overflow-x:auto;margin-top:22px}
+.h{flex:1 0 74px;text-align:center;padding:8px 2px;border-radius:16px}
+.h.now{background:var(--soft)}
+.h b{display:block;font-weight:500;font-size:15px}
+.h .bar{height:56px;display:flex;align-items:flex-end;justify-content:center;margin:6px 0}
+.h .bar span{width:26px;border-radius:8px;background:var(--line);display:block}
+.h .bar span.up{background:var(--red)}.h .bar span.down{background:var(--grn)}
+.h em{font-style:normal;font-size:18px;font-weight:600}
+h2.sec{font-size:26px;margin:32px 0 14px;letter-spacing:-.4px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:820px){.grid{grid-template-columns:1fr}.big{font-size:64px}}
+.rec{border-radius:22px;background:var(--soft);padding:16px;margin-bottom:12px}
+.rec:last-child{margin-bottom:0}
+.rec .top{display:flex;justify-content:space-between;gap:10px;align-items:center;font-weight:600}
+.tag{padding:4px 12px;border-radius:999px;font-size:14px;font-weight:600}
+.tag.up{background:var(--redbg);color:var(--red)}.tag.down{background:var(--grnbg);color:var(--grn)}.tag.ok{background:var(--card);color:var(--mut)}
+.rec p{margin:8px 0 0;color:var(--mut);font-size:15px}
+.rec .num{font-size:15px;margin-top:6px}
+.line{position:relative;padding-left:4px}
+.line:before{content:"";position:absolute;left:21px;top:20px;bottom:20px;width:6px;background:var(--ln);opacity:.35;border-radius:3px}
+.s{position:relative}
+.st{display:flex;align-items:center;gap:14px;width:100%;border:0;background:transparent;color:inherit;font:inherit;text-align:left;padding:8px 10px 8px 4px;border-radius:16px;cursor:pointer}
+.st:hover{background:var(--soft)}
+.pt{flex:none;width:36px;height:36px;display:grid;place-items:center;position:relative}
+.pt i{width:18px;height:18px;border-radius:50%;background:var(--card);border:4px solid var(--ln);display:block}
+.s.an .pt i{width:22px;height:22px;border:0;background:#a30000;box-shadow:0 0 0 6px var(--redbg),0 0 0 8px var(--red)}.dep{font-size:12px;font-weight:600;background:var(--soft);color:var(--mut);padding:2px 8px;border-radius:999px;margin-left:8px}.dp{border-radius:22px;background:var(--soft);padding:16px;margin-bottom:12px}.dp:last-child{margin-bottom:0}.dp h3{margin:0 0 8px;font-size:18px}.act{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line);font-size:15px}.act:first-of-type{border-top:0}.act .tm{font-weight:700;min-width:48px}.act small{color:var(--mut);display:block}.note{color:var(--mut);font-size:14px;margin:0 0 10px}
+.nm{flex:1;font-weight:500}.s.an .nm{color:var(--red);font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.pc{font-weight:600;min-width:64px;text-align:right}
+.pc.up{color:var(--red)}.pc.down{color:var(--grn)}.pc.z{color:var(--mut)}
+.det{display:none;margin:2px 0 10px 46px;background:var(--redbg);border-radius:18px;padding:14px 16px}
+.det.calm{background:var(--soft)}
+.s.open .det{display:block}
+.det .kv{display:flex;gap:18px;color:var(--mut);font-size:14px;flex-wrap:wrap;margin-bottom:8px}
+.det .kv b{color:var(--tx)}
+.why{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.why:first-of-type{border-top:0}
+.why span.ic{font-size:20px}.why div{flex:1}.why small{color:var(--mut)}
+.legend{display:flex;gap:16px;color:var(--mut);font-size:14px;margin-bottom:10px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.empty{color:var(--mut);padding:12px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="logo"><i>М</i>Красная линия</div>
+  <nav class="pills" id="lines"></nav>
+  <div class="upd"><span class="dot"></span><span id="upd">загрузка…</span></div>
+</header>
+
+<section class="panel">
+  <div class="hero">
+    <div class="big" id="bigNum">—</div>
+    <div><h2 id="hTitle"></h2><p id="hText"></p></div>
+  </div>
+  <div class="meta" id="meta"></div>
+  <div class="chips" id="dirs"></div>
+  <div class="row" id="factors"></div>
+  <div class="hours" id="hours"></div>
+</section>
+
+<div class="grid">
+  <div>
+    <h2 class="sec">Что изменить на линии</h2>
+    <div class="panel" id="recs"></div>
+    <h2 class="sec">Выпуск из депо и возврат</h2>
+    <div class="panel" id="depots"></div>
+  </div>
+  <div>
+    <h2 class="sec">Станции</h2>
+    <div class="panel">
+      <div class="legend"><span><i style="background:var(--red)"></i>ожидается аномалия</span><span><i style="background:#fff;border:3px solid var(--ln)"></i>в пределах нормы</span></div>
+      <p class="note">Поезда выходят на линию из двух депо: у конечной «Девяткино» и у станции «Автово» — она не конечная, за ней ещё «Ленинский проспект» и «Проспект Ветеранов». Из депо «Автово» состав может уйти в любую сторону.</p><div class="line" id="stations"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+/* ============ КОНТРАКТ ДАННЫХ (то, что должен вернуть ваш алгоритм) ============
+{
+  updated: ISO-строка, threshold: 25,            // порог аномалии, % отклонения от медианы
+  directions: [{id:"to_veteranov",name:"К «Проспекту Ветеранов»"},{id:"to_devyatkino",name:"К «Девяткино»"}],
+  factors: [{icon, title, text, period}],         // общегородские события: снег, конец рабочего дня…
+  timeline: {to_veteranov:[{time:"16:00", base:22, rec:26}], to_devyatkino:[…]},   // поездов/час: норма и рекомендация
+  recommendations: [{direction, from, to, action:"up"|"down"|"keep", trains_delta, interval_now, interval_new, period, reason}],
+  depots: [{id, name, actions:[{type:"release"|"return", count, time:"16:20", direction, note}]}],
+  stations: [{id, name, depot?:true, median:{to_veteranov:n,to_devyatkino:n}, current:{…}, reasons:[{icon,type,text,direction,impact_pct,source}]}]
+}   // станции — по порядку от Девяткино до Проспекта Ветеранов
+Отклонение считает UI: (current-median)/median*100.
+Подключение: MetroUI.update(json) либо CONFIG.API_URL (опрос каждые POLL_MS). */
+const CONFIG={API_URL:"/api/state",POLL_MS:1000};
+
+const mockData=()=>{const H=new Date().getHours();const t=i=>String((H+i)%24).padStart(2,"0")+":00";
+const base=[20,20,22,24,26,26,24,22,20,18,18,16],dA=[0,0,1,2,2,2,2,1,0,0,0,0],dB=[-1,-1,-1,0,0,0,0,0,1,2,2,0];
+const timeline={to_veteranov:base.map((b,i)=>({time:t(i),base:b,rec:b+dA[i]})),to_devyatkino:base.map((b,i)=>({time:t(i),base:b,rec:b+dB[i]}))};
+const st=(id,name,m,c,r,depot)=>({id,name,depot,median:{to_veteranov:m,to_devyatkino:Math.round(m*.85)},current:{to_veteranov:c[0],to_devyatkino:c[1]??Math.round(m*.85)},reasons:r||[]});
+return{updated:new Date().toISOString(),threshold:25,
+directions:[{id:"to_veteranov",name:"К «Проспекту Ветеранов»"},{id:"to_devyatkino",name:"К «Девяткино»"}],
+factors:[{icon:"❄️",title:"Первый снег по городу",text:"Снег с 16:00, спрос на метро вырастет на 8–12%.",period:"с 16:00"},
+{icon:"🏢",title:"Конец рабочего дня",text:"Пик 17:30–19:00: потоки из центра к конечным станциям.",period:"17:30–19:00"},
+{icon:"🚧",title:"ДТП на Московском проспекте",text:"Наземный транспорт замедлен, часть пассажиров пересядет в метро.",period:"сейчас"}],
+timeline,
+recommendations:[
+{direction:"to_veteranov",from:"Девяткино",to:"Площадь Восстания",action:"up",trains_delta:2,interval_now:"2 мин 40 с",interval_new:"2 мин 20 с",period:"16:30–19:00",reason:"Конец рабочего дня + снег: ожидается +25–40% к медиане на центральных станциях."},
+{direction:"to_veteranov",from:"Площадь Восстания",to:"Проспект Ветеранов",action:"up",trains_delta:1,interval_now:"4 мин",interval_new:"3 мин 30 с",period:"19:00–21:30",reason:"Концерт в БКЗ «Октябрьский» — приток на Площади Восстания."},
+{direction:"to_devyatkino",from:"Проспект Ветеранов",to:"Девяткино",action:"down",trains_delta:-1,interval_now:"4 мин 30 с",interval_new:"5 мин 30 с",period:"12:00–15:00",reason:"Поток на 18% ниже медианы из-за непогоды."},
+{direction:"to_devyatkino",from:"Площадь Восстания",to:"Девяткино",action:"up",trains_delta:2,interval_now:"4 мин",interval_new:"3 мин",period:"22:00–23:15",reason:"Окончание концерта, разъезд зрителей."}],
+depots:[{id:"devyatkino",name:"Депо у станции Девяткино",actions:[
+ {type:"release",count:2,time:"16:20",direction:"to_veteranov",note:"Усилить пик: выйти на линию к 16:30 и идти до «Проспекта Ветеранов»"}]},
+{id:"avtovo",name:"Депо у станции Автово",actions:[
+ {type:"return",count:1,time:"12:30",direction:"to_devyatkino",note:"Спад потока — снять состав с линии в депо «Автово»"},
+ {type:"release",count:2,time:"21:10",direction:"to_devyatkino",note:"Выйти из депо «Автово» в сторону «Девяткино» к окончанию концерта"}]}],
+stations:[
+st("1","Девяткино",2200,[2300,1900],[],true),
+st("2","Гражданский проспект",1500,[1560]),
+st("3","Академическая",1800,[1880]),
+st("4","Политехническая",1700,[2380],[{icon:"🎓",type:"time",text:"Окончание занятий в вузах, 15:30–16:30.",direction:"to_veteranov",impact_pct:32,source:"расписание вузов"},{icon:"❄️",type:"weather",text:"Снег повышает спрос.",direction:"to_veteranov",impact_pct:8,source:"метео"}]),
+st("5","Площадь Мужества",1300,[1330]),
+st("6","Лесная",1900,[2000]),
+st("7","Выборгская",1200,[1180]),
+st("8","Площадь Ленина",2600,[3400],[{icon:"🚆",type:"event",text:"Прибытие нескольких поездов на Финляндский вокзал.",direction:"to_veteranov",impact_pct:18,source:"расписание РЖД"},{icon:"🏢",type:"time",text:"Конец рабочего дня.",direction:"to_veteranov",impact_pct:12,source:"календарь"}]),
+st("9","Чернышевская",1500,[1540]),
+st("10","Площадь Восстания",3400,[4700,3700],[{icon:"🎤",type:"event",text:"Концерт в БКЗ «Октябрьский», начало 19:00, конец около 22:00.",direction:"to_veteranov",impact_pct:28,source:"афиша"},{icon:"🏢",type:"time",text:"Конец рабочего дня.",direction:"to_veteranov",impact_pct:10,source:"календарь"},{icon:"🎤",type:"event",text:"Разъезд зрителей после концерта.",direction:"to_devyatkino",impact_pct:36,source:"афиша"}]),
+st("11","Владимирская",2100,[2200]),
+st("12","Пушкинская",1800,[1850]),
+st("13","Технологический институт",2000,[2050]),
+st("14","Балтийская",1400,[1380]),
+st("15","Нарвская",1700,[1750]),
+st("16","Кировский завод",1100,[1120]),
+st("17","Автово",1900,[1960,1100],[{icon:"🌧️",type:"weather",text:"Резкое падение поездок из-за непогоды.",direction:"to_devyatkino",impact_pct:-32,source:"метео"}],true),
+st("18","Ленинский проспект",1300,[1340]),
+st("19","Проспект Ветеранов",2300,[2380])]};};
+
+let D=null,dir=null,openId=null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const dev=(s,d)=>{const m=s.median?.[d],c=s.current?.[d];return m?Math.round((c-m)/m*100):0};
+const sign=n=>(n>0?"+":n<0?"−":"")+Math.abs(n);
+
+function render(){
+ if(!D)return;
+ dir=dir||D.directions[0].id;
+ const th=D.threshold??25,dn=D.directions.find(d=>d.id===dir);
+ $("upd").textContent="обновлено "+new Date(D.updated).toLocaleTimeString("ru",{hour:"2-digit",minute:"2-digit"});
+ $("lines").innerHTML='<button class="pill on">Линия 1 · Кировско-Выборгская</button>';
+ $("depots").innerHTML=(D.depots||[]).map(d=>`<div class="dp"><h3>${esc(d.name)}</h3>${(d.actions||[]).map(a=>{const r=a.type==="release",dn=(D.directions.find(x=>x.id===a.direction)||{}).name||"";return`<div class="act"><span class="tm">${esc(a.time)}</span><div><span class="tag ${r?"up":"down"}">${r?"Выпустить":"Убрать"} ${a.count}</span> <span style="color:var(--mut)">${esc(dn)}</span><small>${esc(a.note||"")}</small></div></div>`}).join("")||'<div class="empty">Действий не требуется</div>'}</div>`).join("");
+ $("dirs").innerHTML=D.directions.map(d=>`<button class="chip ${d.id===dir?"on":""}" data-d="${d.id}">${esc(d.name)}</button>`).join("");
+ const recs=D.recommendations.filter(r=>r.direction===dir),tl=D.timeline[dir]||[];
+ const ups=recs.filter(r=>r.action==="up"),dws=recs.filter(r=>r.action==="down");
+ const top=ups[0]||dws[0];
+ const big=$("bigNum");
+ if(top){big.textContent=sign(top.trains_delta);big.className="big "+(top.action==="up"?"up":"down");
+  $("hTitle").textContent=top.action==="up"?"Добавить поезда":"Сократить поезда";
+  $("hText").textContent=`${top.from} → ${top.to}, ${top.period}. Интервал ${top.interval_now} → ${top.interval_new}`;}
+ else{big.textContent="0";big.className="big";$("hTitle").textContent="Без изменений";$("hText").textContent="Отклонений от медианы не ожидается";}
+ const an=D.stations.filter(s=>Math.abs(dev(s,dir))>=th).length;
+ $("meta").innerHTML=`<span>Направление: ${esc(dn.name)}</span><span>Станций с аномалией: <b style="color:var(--tx)">${an}</b> из ${D.stations.length}</span><span>Порог: ±${th}% от медианы</span>`;
+ $("factors").innerHTML=D.factors.length?D.factors.map(f=>`<div class="card"><h3>${esc(f.icon)} ${esc(f.title)}</h3><p>${esc(f.text)}</p><p style="margin-top:8px;color:var(--tx);font-weight:600">${esc(f.period)}</p></div>`).join(""):"";
+ const mx=Math.max(1,...tl.map(x=>Math.max(x.base,x.rec)));
+ $("hours").innerHTML=tl.map((x,i)=>{const d=x.rec-x.base,c=d>0?"up":d<0?"down":"";
+  return`<div class="h ${i?"":"now"}"><b>${esc(x.time)}</b><div class="bar"><span class="${c}" style="height:${Math.max(8,x.rec/mx*56)}px"></span></div><em class="${c}" style="${c==="up"?"color:var(--red)":c==="down"?"color:var(--grn)":"color:var(--mut)"}">${d?sign(d):"0"}</em><small style="color:var(--mut);display:block">${x.rec} п/ч</small></div>`}).join("");
+ $("recs").innerHTML=recs.length?recs.map(r=>{const c=r.action==="up"?"up":r.action==="down"?"down":"ok";
+  const lbl=r.action==="up"?`Увеличить на ${r.trains_delta}`:r.action==="down"?`Уменьшить на ${Math.abs(r.trains_delta)}`:"Без изменений";
+  return`<div class="rec"><div class="top"><span>${esc(r.from)} → ${esc(r.to)}</span><span class="tag ${c}">${lbl}</span></div><div class="num">Интервал: ${esc(r.interval_now)} → <b>${esc(r.interval_new)}</b> · ${esc(r.period)}</div><p>${esc(r.reason)}</p></div>`}).join(""):'<div class="empty">Рекомендаций по этому направлению нет</div>';
+ const list=dir===D.directions[0].id?D.stations:[...D.stations].reverse();
+ $("stations").innerHTML=list.map(s=>{const p=dev(s,dir),a=Math.abs(p)>=th,c=p>0?"up":p<0?"down":"z";
+  const rs=(s.reasons||[]).filter(r=>!r.direction||r.direction===dir);
+  return`<div class="s ${a?"an":""} ${openId===s.id?"open":""}"><button class="st" data-s="${esc(s.id)}" aria-expanded="${openId===s.id}"><span class="pt"><i></i></span><span class="nm">${esc(s.name)}${s.depot?'<span class="dep">депо</span>':""}</span><span class="pc ${a?c:"z"}">${p?sign(p)+"%":"норма"}</span></button>
+  <div class="det ${a?"":"calm"}"><div class="kv"><span>Медиана: <b>${s.median[dir]}</b></span><span>Сейчас/прогноз: <b>${s.current[dir]}</b></span><span>Отклонение: <b>${sign(p)}%</b></span></div>
+  ${rs.length?rs.map(r=>`<div class="why"><span class="ic">${esc(r.icon||"•")}</span><div>${esc(r.text)}<br><small>${r.impact_pct!=null?"вклад "+sign(r.impact_pct)+"% · ":""}${esc(r.source||"")}</small></div></div>`).join(""):'<div class="empty" style="padding:0">Аномалий и причин не выявлено</div>'}</div></div>`}).join("");
+}
+document.addEventListener("click",e=>{
+ const c=e.target.closest(".chip"),s=e.target.closest(".st");
+ if(c){dir=c.dataset.d;render()}
+ if(s){openId=openId===s.dataset.s?null:s.dataset.s;render()}
+});
+const MetroUI={update(j){D=j;render()}};window.MetroUI=MetroUI;
+async function load(){
+ if(CONFIG.API_URL){try{const r=await fetch(CONFIG.API_URL);MetroUI.update(await r.json());return}catch(e){console.warn("API недоступен, показаны демо-данные",e)}}
+ if(!D)MetroUI.update(mockData());
+}
+load();if(CONFIG.API_URL)setInterval(load,CONFIG.POLL_MS);
+</script>
+</body>
+</html>
