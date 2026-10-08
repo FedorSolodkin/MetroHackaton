@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local raw data files (kept locally, not committed to git per README)
+data/1.Пассажиропоток+ ГД/
+data/2.ОСНОВНЫЕ ПОКАЗАТЕЛИ выполнения ГД/
+data/3.Характеристики состава и Линии/
+data/*.xlsx
+data/*.xls
+data/*.docx
+data/*.pdf
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+*.log
