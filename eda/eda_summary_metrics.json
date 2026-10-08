@@ -14,7 +14,8 @@
       "Май",
       "Июль",
       "Сентябрь"
-    ]
+    ],
+    "note_operating_hours": "слоты 00:30-05:15 (проходы сотрудников) исключаются загрузчиком; суммы ниже посчитаны по полному набору"
   },
   "monthly_totals": {
     "february": 17458329.0,
@@ -54,11 +55,35 @@
     "off_peak_saturation_ratio": 1.147008488128921
   },
   "economic_optimization": {
-    "trips_optimized": 120.0,
-    "total_km_saved": 7104.0,
-    "total_kwh_saved": 1392384.0,
-    "energy_rub_saved": 9468211.2,
-    "toir_rub_saved": 852480.0,
-    "total_rub_saved": 10320691.2
+    "status": "recalculated_2026-10-08",
+    "source": "eda/economics_recalc.json",
+    "realistic_25pct": {
+      "adoption": 0.2,
+      "km_month": 21756.0,
+      "kwh_month": 533022.0,
+      "energy_rub": 3624549.6,
+      "toir_rub": 2610720.0,
+      "total_rub_month": 6235269.6,
+      "total_rub_year": 74823235.2,
+      "passenger_time_cost_rub_month": 5673431.4,
+      "net_rub_month": 561838.2
+    },
+    "ceiling": {
+      "km_month": 87024,
+      "total_rub_month": 24941078
+    },
+    "old_claim_recomputed": {
+      "trips": 120,
+      "period_days": 120,
+      "km": 7104.0,
+      "kwh": 174048.0,
+      "energy_rub": 1183526.4,
+      "toir_rub": 852480.0,
+      "total_rub": 2036006.4,
+      "per_month_30d": 509001.6,
+      "per_year": 6108019.2,
+      "claimed_per_month_rub": 10320691.2,
+      "claimed_per_year_rub": 123848294.4
+    }
   }
 }

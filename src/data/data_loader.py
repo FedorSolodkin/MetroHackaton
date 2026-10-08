@@ -17,6 +17,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from configs.stations import get_station_info, STATIONS_LINE_1
 from configs.metro_config import METRO_CONFIG
+from src.data.operating_hours import filter_operating_hours
 
 
 class MetroDataLoader:
@@ -117,10 +118,13 @@ class MetroDataLoader:
         """
         Загружает и объединяет все 4 месяца (февраль, май, июль, сентябрь 2026)
         15-минутного пассажиропотока по вестибюлям.
+
+        Возвращаются только пассажирские слоты 05:30-00:30 (see operating_hours.py):
+        ночные проходы сотрудников (00:30-05:15) не входят в пассажиропоток.
         """
         if os.path.exists(self.cache_parquet) and not force_reload:
             try:
-                return pd.read_parquet(self.cache_parquet)
+                return filter_operating_hours(pd.read_parquet(self.cache_parquet))
             except Exception:
                 pass
                 
@@ -151,8 +155,8 @@ class MetroDataLoader:
         
         # Сохранение в кэш
         os.makedirs(os.path.dirname(self.cache_parquet), exist_ok=True)
-        df.to_parquet(self.cache_parquet, index=False)
-        return df
+        df.to_parquet(self.cache_parquet, index=False)  # кэш хранит сырые данные целиком
+        return filter_operating_hours(df)
 
     def get_station_aggregated_flow(self, df_15min: Optional[pd.DataFrame] = None) -> pd.DataFrame:
         """Агрегирует пассажиропоток по станциям (суммируя вестибюли)."""
