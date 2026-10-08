@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>СППР «МетроПульс-1» — ЦУП Петербургского Метрополитена</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b1120;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Стилизация скроллбара */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        /* Анимация пульсации для критических индикаторов */
+        @keyframes pulse-fast {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.05); }
+        }
+        .animate-pulse-fast {
+            animation: pulse-fast 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .train-dot {
+            transition: all 0.5s ease-out;
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col antialiased select-none">
+
+    <!-- ВЕРХНЯЯ ШАПКА ЦУП (SCADA HEADER) -->
+    <header class="bg-slate-900/90 border-b border-slate-800 px-6 py-3.5 backdrop-blur sticky top-0 z-50 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <!-- Эмблема линии 1 (Красная Линия) -->
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-lg bg-red-600 flex items-center justify-center font-bold text-white shadow-lg shadow-red-600/30 text-xl border border-red-400/40">
+                    1
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="text-lg font-bold text-white tracking-wide">СППР «МетроПульс-1»</h1>
+                        <span class="px-2 py-0.5 text-xs font-semibold rounded bg-red-950/80 text-red-400 border border-red-800/60 uppercase">
+                            Кировско-Выборгская
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400">Центр управления перевозками (ЦУП) СПб ГУП «Петербургский метрополитен»</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Центральные телеметрические метрики -->
+        <div class="flex items-center space-x-6 text-sm">
+            <!-- Слот времени -->
+            <div class="bg-slate-950 px-3.5 py-1.5 rounded-lg border border-slate-800 flex items-center space-x-2.5">
+                <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></div>
+                <div class="font-mono text-slate-300">
+                    <span id="display-date" class="text-slate-400 text-xs mr-1">02.09.2026</span>
+                    <span id="display-time" class="text-emerald-400 font-bold text-base">07:00</span>
+                </div>
+                <span id="badge-slot" class="text-xs px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">Слот #28</span>
+            </div>
+
+            <!-- Суммарный поток -->
+            <div class="bg-slate-950 px-3.5 py-1.5 rounded-lg border border-slate-800">
+                <div class="text-xs text-slate-400">Приток (15 мин)</div>
+                <div class="font-mono font-bold text-sky-400 text-base flex items-baseline space-x-1">
+                    <span id="metric-inflow">13 056</span>
+                    <span class="text-xs text-slate-500 font-normal">пасс</span>
+                </div>
+            </div>
+
+            <!-- Составов на линии -->
+            <div class="bg-slate-950 px-3.5 py-1.5 rounded-lg border border-slate-800">
+                <div class="text-xs text-slate-400">Составов / Парность</div>
+                <div class="font-mono font-bold text-amber-400 text-base flex items-baseline space-x-1">
+                    <span id="metric-trains">50</span>
+                    <span class="text-xs text-slate-500 font-normal">сост (30 пар/ч)</span>
+                </div>
+            </div>
+
+            <!-- Коэффициент насыщенности -->
+            <div class="bg-slate-950 px-3.5 py-1.5 rounded-lg border border-slate-800">
+                <div class="text-xs text-slate-400">Насыщенность (S)</div>
+                <div class="font-mono font-bold text-base flex items-baseline space-x-1">
+                    <span id="metric-saturation" class="text-emerald-400">0.865</span>
+                    <span id="metric-sat-badge" class="text-xs px-1.5 rounded bg-emerald-950 text-emerald-400 font-semibold uppercase">Норма</span>
+                </div>
+            </div>
+
+            <!-- Годовой экономический эффект -->
+            <div class="bg-slate-950 px-3.5 py-1.5 rounded-lg border border-slate-800 hidden xl:block">
+                <div class="text-xs text-slate-400">Экономия (Тяга + ТОиР)</div>
+                <div class="font-mono font-bold text-emerald-400 text-base">
+                    <span id="metric-savings">124.6 млн</span> <span class="text-xs text-slate-500 font-normal">₽/год</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Статус связи -->
+        <div class="flex items-center space-x-3">
+            <span id="ws-status" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-950 text-emerald-300 border border-emerald-800/60">
+                <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-emerald-400"></span> SCADA Live
+            </span>
+        </div>
+    </header>
+
+    <!-- ПАНЕЛЬ УПРАВЛЕНИЯ И WHAT-IF СЦЕНАРИЕВ -->
+    <div class="bg-slate-900 border-b border-slate-800 px-6 py-2.5 flex flex-wrap items-center justify-between gap-4">
+        <!-- Кнопки управления воспроизведением -->
+        <div class="flex items-center space-x-2">
+            <button id="btn-play-pause" onclick="togglePlay()" class="px-3.5 py-1.5 rounded-md bg-sky-600 hover:bg-sky-500 font-medium text-xs text-white flex items-center space-x-1.5 transition">
+                <span id="play-icon">▶</span>
+                <span id="play-text">Авто-ход</span>
+            </button>
+            <button onclick="stepForward()" class="px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 transition flex items-center space-x-1">
+                <span>⏭</span> <span>Шаг (+15м)</span>
+            </button>
+            <!-- Скорость -->
+            <div class="flex items-center space-x-1 bg-slate-950 p-1 rounded-md border border-slate-800 text-xs">
+                <span class="text-slate-400 px-1.5">Скорость:</span>
+                <button onclick="setSpeed(1)" class="speed-btn px-2 py-0.5 rounded text-slate-300 hover:bg-slate-800">1x</button>
+                <button onclick="setSpeed(5)" class="speed-btn px-2 py-0.5 rounded bg-sky-900/60 text-sky-300 font-bold border border-sky-700">5x</button>
+                <button onclick="setSpeed(15)" class="speed-btn px-2 py-0.5 rounded text-slate-300 hover:bg-slate-800">15x</button>
+                <button onclick="setSpeed(30)" class="speed-btn px-2 py-0.5 rounded text-slate-300 hover:bg-slate-800">30x</button>
+            </div>
+            <!-- Слайдер времени суток -->
+            <div class="flex items-center space-x-2 ml-4">
+                <span class="text-xs text-slate-400">Таймлайн:</span>
+                <input id="timeline-slider" type="range" min="0" max="95" value="28" class="w-36 accent-sky-500 cursor-pointer" oninput="seekTimeline(this.value)">
+            </div>
+        </div>
+
+        <!-- ПРЕСЕТЫ И WHAT-IF ПОГОДА -->
+        <div class="flex items-center space-x-4">
+            <!-- Пресеты смен -->
+            <div class="flex items-center space-x-1.5 text-xs">
+                <span class="text-slate-400 mr-1">Пресеты:</span>
+                <button onclick="jumpToSlot(32)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Утро (08:00)</button>
+                <button onclick="jumpToSlot(52)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Межпик (13:00)</button>
+                <button onclick="jumpToSlot(72)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Вечер (18:00)</button>
+            </div>
+
+            <!-- What-If Слайдер Погоды -->
+            <div class="flex items-center space-x-2.5 bg-slate-950 px-3 py-1 rounded-md border border-slate-800">
+                <span class="text-xs text-slate-300 flex items-center space-x-1">
+                    <span>🌧️</span> <span>Ливень:</span>
+                </span>
+                <input id="rain-slider" type="range" min="0" max="25" step="0.5" value="0" class="w-24 accent-amber-500 cursor-pointer" oninput="updateRainShock(this.value)">
+                <span id="rain-val" class="font-mono text-xs text-amber-400 font-bold min-w-[50px]">0.0 мм/ч</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ (GRID) -->
+    <main class="flex-1 p-6 grid grid-cols-12 gap-6 overflow-hidden">
+        
+        <!-- ЛЕВАЯ И ЦЕНТРАЛЬНАЯ КОЛОНКА (Мнемосхема линии и аналитика) - 8/12 -->
+        <div class="col-span-12 lg:col-span-8 flex flex-col space-y-6">
+            
+            <!-- МНЕМОСХЕМА ЛИНИИ 1 (MIMIC DIAGRAM) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl relative">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-2.5">
+                        <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                        <h2 class="font-bold text-white text-sm uppercase tracking-wider">Мнемосхема Линии 1 (Кировско-Выборгская, 29.6 км)</h2>
+                    </div>
+                    <div class="flex items-center space-x-4 text-xs">
+                        <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> <span class="text-slate-400">LOS A-B (&lt;1.1 пасс/м²)</span></span>
+                        <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> <span class="text-slate-400">LOS C-D (Плотный)</span></span>
+                        <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> <span class="text-slate-400">LOS E-F (&gt;3.3 Давка)</span></span>
+                        <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded bg-sky-500"></span> <span class="text-slate-400">Оборотные тупики</span></span>
+                    </div>
+                </div>
+
+                <!-- Контейнер схемы с путями и поездами -->
+                <div class="relative bg-slate-950 rounded-lg p-5 border border-slate-800/80 overflow-x-auto">
+                    <!-- Путь 1 (Северный: Ветеранов -> Девяткино) -->
+                    <div class="relative my-7">
+                        <div class="text-[10px] font-mono text-slate-500 mb-1 flex justify-between">
+                            <span>1 ПУТЬ (НА СЕВЕР: ПР. ВЕТЕРАНОВ → ДЕВЯТКИНО)</span>
+                            <span>29.6 КМ</span>
+                        </div>
+                        <!-- Рельсовая нить -->
+                        <div class="h-2 bg-slate-800 rounded-full relative overflow-visible">
+                            <!-- Прогресс линии и подсветка -->
+                            <div class="absolute inset-0 bg-gradient-to-r from-red-600 via-rose-500 to-red-600 opacity-60 rounded-full"></div>
+                            <!-- Станции на 1 пути -->
+                            <div id="track1-stations" class="absolute inset-0 flex justify-between items-center px-1">
+                                <!-- Генерируется скриптом -->
+                            </div>
+                            <!-- Поезда 1 пути -->
+                            <div id="track1-trains" class="absolute inset-0 pointer-events-none">
+                                <!-- Генерируется скриптом -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Путь 2 (Южный: Девяткино -> Ветеранов) -->
+                    <div class="relative my-7">
+                        <div class="text-[10px] font-mono text-slate-500 mb-1 flex justify-between">
+                            <span>2 ПУТЬ (НА ЮГ: ДЕВЯТКИНО → ПР. ВЕТЕРАНОВ)</span>
+                            <span>29.6 КМ</span>
+                        </div>
+                        <!-- Рельсовая нить -->
+                        <div class="h-2 bg-slate-800 rounded-full relative overflow-visible">
+                            <div class="absolute inset-0 bg-gradient-to-l from-red-600 via-rose-500 to-red-600 opacity-60 rounded-full"></div>
+                            <div id="track2-stations" class="absolute inset-0 flex justify-between items-center px-1">
+                                <!-- Генерируется скриптом -->
+                            </div>
+                            <div id="track2-trains" class="absolute inset-0 pointer-events-none">
+                                <!-- Генерируется скриптом -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Обозначения депо и оборотных тупиков -->
+                    <div class="grid grid-cols-4 gap-2 pt-3 border-t border-slate-900 text-xs">
+                        <div class="bg-slate-900/60 p-2 rounded border border-slate-800 flex items-center space-x-2">
+                            <div class="w-2 h-2 rounded bg-sky-400"></div>
+                            <div>
+                                <div class="font-bold text-slate-200">ТЧ-1 «Автово»</div>
+                                <div class="text-[10px] text-slate-400">Горячий резерв (15 мин)</div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-900/60 p-2 rounded border border-slate-800 flex items-center space-x-2">
+                            <div class="w-2 h-2 rounded bg-emerald-400"></div>
+                            <div>
+                                <div class="font-bold text-slate-200">ст. «Площадь Ленина»</div>
+                                <div class="text-[10px] text-slate-400">Зонный оборот (Short-turn)</div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-900/60 p-2 rounded border border-slate-800 flex items-center space-x-2">
+                            <div class="w-2 h-2 rounded bg-sky-400"></div>
+                            <div>
+                                <div class="font-bold text-slate-200">ст. «Пл. Восстания»</div>
+                                <div class="text-[10px] text-slate-400">Центральный тупик</div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-900/60 p-2 rounded border border-slate-800 flex items-center space-x-2">
+                            <div class="w-2 h-2 rounded bg-sky-400"></div>
+                            <div>
+                                <div class="font-bold text-slate-200">ТЧ-4 «Северное»</div>
+                                <div class="text-[10px] text-slate-400">Депо Девяткино</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Подсказка при клике -->
+                <div id="station-detail-banner" class="mt-3 text-xs text-slate-400 flex items-center justify-between bg-slate-950 px-3 py-2 rounded border border-slate-800">
+                    <span id="selected-station-text">Нажмите на любую станцию схемы для просмотра детальной телеметрии и предиктивных горизонтов.</span>
+                    <span id="station-pill" class="font-mono text-sky-400 font-bold hidden">ст. Девяткино</span>
+                </div>
+            </div>
+
+            <!-- ГРАФИК ПРОГНОЗОВ И ПРИТОКА (CHART.JS) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl flex-1 flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-white text-sm uppercase tracking-wider flex items-center space-x-2">
+                        <span>📊</span>
+                        <span>Попикетный срез Линии 1: Факт vs ML Прогнозы (+15м, +30м, +60м)</span>
+                    </h3>
+                    <div class="text-xs text-slate-400">Единица: Пассажиров / 15 мин</div>
+                </div>
+                <div class="flex-1 w-full min-h-[220px]">
+                    <canvas id="flowChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ПРАВАЯ КОЛОНКА: ДИСПЕТЧЕРСКИЙ ПУЛЬТ РЕШЕНИЙ (DECISION CONSOLE) - 4/12 -->
+        <div class="col-span-12 lg:col-span-4 flex flex-col space-y-6">
+            
+            <!-- ГЛАВНАЯ КАРТОЧКА УПРАВЛЯЮЩЕГО ВОЗДЕЙСТВИЯ -->
+            <div id="decision-card" class="bg-slate-900 border-2 border-red-500/80 rounded-xl p-5 shadow-2xl relative overflow-hidden flex flex-col justify-between">
+                <!-- Фон и бейдж статуса -->
+                <div class="absolute top-0 right-0 px-3 py-1 text-[11px] font-bold font-mono tracking-wider uppercase rounded-bl-lg bg-red-600 text-white shadow" id="decision-badge">
+                    ДИРЕКТИВА ЦУП
+                </div>
+
+                <div>
+                    <!-- Заголовок действия -->
+                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                        Рекомендация Decision Engine:
+                    </div>
+                    <h3 id="decision-title" class="text-lg font-extrabold text-white leading-snug">
+                        Выдать горячий резерв из ТЧ-1 «Автово»
+                    </h3>
+                    <div id="decision-subtitle" class="text-xs text-amber-400 mt-1 font-mono">
+                        Отправление: 07:15 | Количество: 1 состав | Срок готовности: 15 мин
+                    </div>
+
+                    <!-- Таймер обратного отсчета до реализации -->
+                    <div class="my-4 bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between">
+                        <div>
+                            <div class="text-[11px] text-slate-400">Таймер до ввода в ГД:</div>
+                            <div id="countdown-timer" class="font-mono text-2xl font-black text-rose-400">
+                                12:45
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[11px] text-slate-400">Локация ввода:</div>
+                            <div id="decision-location" class="font-mono font-bold text-slate-200 text-sm">
+                                ТЧ-1 «Автово»
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Обоснование решения (XAI / SHAP) -->
+                    <div class="mt-3">
+                        <div class="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
+                            <span>🔍</span> <span>Факторы принятия решения (XAI):</span>
+                        </div>
+                        <ul id="decision-reasons" class="space-y-1.5 text-xs text-slate-300">
+                            <li class="flex items-start space-x-2">
+                                <span class="text-rose-400 font-bold">•</span>
+                                <span>Прогнозируется выход насыщенности перегона за 1.00 к 07:30</span>
+                            </li>
+                            <li class="flex items-start space-x-2">
+                                <span class="text-sky-400 font-bold">•</span>
+                                <span>Рост притока на южном хабе ст. «Проспект Ветеранов» (+450 пасс)</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Экономический эффект директивы -->
+                    <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-mono">
+                        <span class="text-slate-400">Эффект воздействия:</span>
+                        <span id="decision-econ" class="font-bold text-emerald-400">+31 200 ₽ (сбережение ресурса)</span>
+                    </div>
+                </div>
+
+                <!-- Кнопки подтверждения диспетчера -->
+                <div class="mt-5 pt-3 border-t border-slate-800 flex space-x-3">
+                    <button onclick="confirmDispatch()" class="flex-1 py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white shadow-lg shadow-emerald-600/30 transition flex items-center justify-center space-x-1.5">
+                        <span>✓</span> <span>Утвердить директиву</span>
+                    </button>
+                    <button onclick="dismissDispatch()" class="py-2.5 px-4 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700 transition">
+                        Оставить ГД
+                    </button>
+                </div>
+            </div>
+
+            <!-- ДЕТАЛИ ВЫБРАННОЙ СТАНЦИИ -->
+            <div id="station-details-card" class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl flex-1 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                            <h4 id="station-card-name" class="font-bold text-white text-base">ст. Девяткино</h4>
+                        </div>
+                        <span id="station-card-type" class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">Северный хаб</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 text-xs mb-4">
+                        <div class="bg-slate-950 p-2.5 rounded border border-slate-800/80">
+                            <div class="text-slate-400">Текущий вход (15м):</div>
+                            <div id="station-card-flow" class="text-lg font-mono font-bold text-sky-400">4 850 чел</div>
+                        </div>
+                        <div class="bg-slate-950 p-2.5 rounded border border-slate-800/80">
+                            <div class="text-slate-400">Плотность платформы:</div>
+                            <div id="station-card-density" class="text-lg font-mono font-bold text-emerald-400">0.92 чел/м²</div>
+                        </div>
+                    </div>
+
+                    <!-- Горизонты прогноза LightGBM -->
+                    <div class="text-xs font-semibold text-slate-300 mb-2">Многогоризонтный прогноз LightGBM:</div>
+                    <div class="grid grid-cols-4 gap-2 text-center font-mono text-xs">
+                        <div class="bg-slate-950 p-2 rounded border border-slate-800">
+                            <div class="text-[10px] text-slate-400">+15 мин</div>
+                            <div id="h15-val" class="font-bold text-emerald-400">5 120</div>
+                        </div>
+                        <div class="bg-slate-950 p-2 rounded border border-slate-800">
+                            <div class="text-[10px] text-slate-400">+30 мин</div>
+                            <div id="h30-val" class="font-bold text-amber-400">5 340</div>
+                        </div>
+                        <div class="bg-slate-950 p-2 rounded border border-slate-800">
+                            <div class="text-[10px] text-slate-400">+60 мин</div>
+                            <div id="h60-val" class="font-bold text-sky-400">4 900</div>
+                        </div>
+                        <div class="bg-slate-950 p-2 rounded border border-slate-800">
+                            <div class="text-[10px] text-slate-400">+120 мин</div>
+                            <div id="h120-val" class="font-bold text-indigo-400">3 200</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+                    <span>Путевое развитие: <strong id="station-turnaround" class="text-slate-200">Имеется</strong></span>
+                    <span>Позиция: <strong id="station-pos" class="text-slate-200">19 из 19</strong></span>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- СКРИПТ КЛИЕНТСКОЙ ЛОГИКИ И WEBSOCKET -->
+    <script>
+        // Глобальное состояние
+        let stateData = null;
+        let selectedStationCode = 129; // По умолчанию Девяткино
+        let ws = null;
+        let flowChart = null;
+
+        // Список 19 станций Линии 1
+        const STATIONS = [
+            { code: 111, name: "Пр. Ветеранов", short: "Вет" },
+            { code: 112, name: "Ленинский пр.", short: "Лен" },
+            { code: 113, name: "Автово", short: "Авт" },
+            { code: 114, name: "Кировский завод", short: "Кир" },
+            { code: 115, name: "Нарвская", short: "Нар" },
+            { code: 116, name: "Балтийская", short: "Бал" },
+            { code: 117, name: "Технол. ин-т", short: "Тех" },
+            { code: 118, name: "Пушкинская", short: "Пуш" },
+            { code: 119, name: "Владимирская", short: "Влад" },
+            { code: 120, name: "Пл. Восстания", short: "Вос" },
+            { code: 121, name: "Чернышевская", short: "Чер" },
+            { code: 122, name: "Пл. Ленина", short: "Лен" },
+            { code: 123, name: "Выборгская", short: "Выб" },
+            { code: 124, name: "Лесная", short: "Лес" },
+            { code: 125, name: "Пл. Мужества", short: "Муж" },
+            { code: 126, name: "Политехническая", short: "Пол" },
+            { code: 127, name: "Академическая", short: "Ака" },
+            { code: 128, name: "Гражданский пр.", short: "Гра" },
+            { code: 129, name: "Девяткино", short: "Дев" }
+        ];
+
+        // Инициализация WebSocket
+        function initWebSocket() {
+            const loc = window.location;
+            const wsUrl = (loc.protocol === "https:" ? "wss://" : "ws://") + loc.host + "/ws/telemetry";
+            
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                document.getElementById("ws-status").innerHTML = '<span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-emerald-400"></span> SCADA Live';
+                document.getElementById("ws-status").className = "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-950 text-emerald-300 border border-emerald-800/60";
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                updateUI(data);
+            };
+
+            ws.onclose = () => {
+                document.getElementById("ws-status").innerHTML = '<span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-rose-400"></span> Переподключение...';
+                document.getElementById("ws-status").className = "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-rose-950 text-rose-300 border border-rose-800/60";
+                setTimeout(initWebSocket, 2000);
+            };
+        }
+
+        // Первичная отрисовка станций на мнемосхеме
+        function renderMimicStations() {
+            const t1 = document.getElementById("track1-stations");
+            const t2 = document.getElementById("track2-stations");
+            t1.innerHTML = "";
+            t2.innerHTML = "";
+
+            STATIONS.forEach((st, idx) => {
+                // Путь 1: 0..18
+                const dot1 = document.createElement("div");
+                dot1.id = `t1-st-${st.code}`;
+                dot1.className = "group relative flex flex-col items-center cursor-pointer";
+                dot1.onclick = () => selectStation(st.code);
+                dot1.innerHTML = `
+                    <div class="w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-slate-900 group-hover:scale-125 transition shadow"></div>
+                    <span class="text-[9px] text-slate-400 mt-1 font-mono group-hover:text-white transition">${st.short}</span>
+                `;
+                t1.appendChild(dot1);
+
+                // Путь 2: 18..0 (обратный порядок)
+                const reverseIdx = STATIONS.length - 1 - idx;
+                const rSt = STATIONS[reverseIdx];
+                const dot2 = document.createElement("div");
+                dot2.id = `t2-st-${rSt.code}`;
+                dot2.className = "group relative flex flex-col items-center cursor-pointer";
+                dot2.onclick = () => selectStation(rSt.code);
+                dot2.innerHTML = `
+                    <div class="w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-slate-900 group-hover:scale-125 transition shadow"></div>
+                    <span class="text-[9px] text-slate-400 mt-1 font-mono group-hover:text-white transition">${rSt.short}</span>
+                `;
+                t2.appendChild(dot2);
+            });
+        }
+
+        // Обновление интерфейса по данным телеметрии
+        function updateUI(data) {
+            stateData = data;
+
+            // 1. Шапка
+            const dtParts = data.timestamp.split(" ");
+            document.getElementById("display-date").innerText = dtParts[0];
+            document.getElementById("display-time").innerText = data.time_slot;
+            document.getElementById("badge-slot").innerText = `Слот #${data.interval_index}`;
+            document.getElementById("timeline-slider").value = data.interval_index;
+
+            document.getElementById("metric-inflow").innerText = data.line_summary.total_inflow_15m.toLocaleString();
+            document.getElementById("metric-trains").innerText = data.line_summary.trains_on_line;
+
+            const sat = data.line_summary.saturation_ratio;
+            const satEl = document.getElementById("metric-saturation");
+            const badgeEl = document.getElementById("metric-sat-badge");
+            satEl.innerText = sat.toFixed(3);
+
+            if (sat > 1.15) {
+                satEl.className = "font-mono font-bold text-base text-rose-400";
+                badgeEl.innerText = "КРИТИЧНО";
+                badgeEl.className = "text-xs px-1.5 rounded bg-rose-950 text-rose-300 font-semibold uppercase animate-pulse";
+            } else if (sat > 0.95) {
+                satEl.className = "font-mono font-bold text-base text-amber-400";
+                badgeEl.innerText = "ВЫСОКАЯ";
+                badgeEl.className = "text-xs px-1.5 rounded bg-amber-950 text-amber-300 font-semibold uppercase";
+            } else {
+                satEl.className = "font-mono font-bold text-base text-emerald-400";
+                badgeEl.innerText = "НОРМА";
+                badgeEl.className = "text-xs px-1.5 rounded bg-emerald-950 text-emerald-300 font-semibold uppercase";
+            }
+
+            // 2. Станции на мнемосхеме (цвета по LOS Фруина)
+            data.stations.forEach(st => {
+                const el1 = document.querySelector(`#t1-st-${st.code} > div`);
+                const el2 = document.querySelector(`#t2-st-${st.code} > div`);
+                
+                let colorClass = "bg-emerald-500";
+                if (st.fruin_los === "RED") colorClass = "bg-rose-500 animate-pulse-fast";
+                else if (st.fruin_los === "YELLOW") colorClass = "bg-amber-500";
+
+                if (el1) el1.className = `w-3.5 h-3.5 rounded-full ${colorClass} border-2 border-slate-900 group-hover:scale-125 transition shadow`;
+                if (el2) el2.className = `w-3.5 h-3.5 rounded-full ${colorClass} border-2 border-slate-900 group-hover:scale-125 transition shadow`;
+            });
+
+            // 3. Отрисовка поездов на мнемосхеме
+            renderTrains(data.trains);
+
+            // 4. Карточка управляющего воздействия
+            updateDecisionCard(data.decision);
+
+            // 5. Карточка выбранной станции
+            updateStationCard();
+
+            // 6. График Chart.js
+            updateChart();
+        }
+
+        // Отрисовка поездов на схеме
+        function renderTrains(trains) {
+            const t1 = document.getElementById("track1-trains");
+            const t2 = document.getElementById("track2-trains");
+            t1.innerHTML = "";
+            t2.innerHTML = "";
+
+            trains.forEach(tr => {
+                const dot = document.createElement("div");
+                dot.className = "train-dot absolute top-[-6px] w-3.5 h-3.5 bg-white border-2 border-red-600 rounded shadow-md transform -translate-x-1/2 flex items-center justify-center text-[7px] font-bold text-slate-900";
+                dot.style.left = `${tr.progress_pct}%`;
+                dot.title = `Поезд #${tr.train_id} (${tr.model}) - ${tr.km} км`;
+
+                if (tr.track === 1) {
+                    t1.appendChild(dot);
+                } else {
+                    t2.appendChild(dot);
+                }
+            });
+        }
+
+        // Обновление карточки решений Decision Engine
+        function updateDecisionCard(dec) {
+            const card = document.getElementById("decision-card");
+            const badge = document.getElementById("decision-badge");
+            const title = document.getElementById("decision-title");
+            const sub = document.getElementById("decision-subtitle");
+            const loc = document.getElementById("decision-location");
+            const timer = document.getElementById("countdown-timer");
+            const econ = document.getElementById("decision-econ");
+            const reasonsList = document.getElementById("decision-reasons");
+
+            if (dec.action === "short_turn") {
+                card.className = "bg-slate-900 border-2 border-amber-500 rounded-xl p-5 shadow-2xl relative overflow-hidden flex flex-col justify-between";
+                badge.className = "absolute top-0 right-0 px-3 py-1 text-[11px] font-bold font-mono tracking-wider uppercase rounded-bl-lg bg-amber-500 text-slate-950";
+                badge.innerText = "ЗОННЫЙ ОБОРОТ";
+                title.innerText = `Зонный оборот ${dec.count} составов по ст. «Площадь Ленина»`;
+                sub.innerText = `Интервал: ${dec.start_time} - ${dec.end_time} | Оборот по центральным тупикам`;
+            } else if (dec.action === "release_hot") {
+                card.className = "bg-slate-900 border-2 border-rose-500 rounded-xl p-5 shadow-2xl relative overflow-hidden flex flex-col justify-between";
+                badge.className = "absolute top-0 right-0 px-3 py-1 text-[11px] font-bold font-mono tracking-wider uppercase rounded-bl-lg bg-rose-600 text-white";
+                badge.innerText = "ГОРЯЧИЙ РЕЗЕРВ";
+                title.innerText = `Ввод горячего резерва (+${dec.count} сост.) из ${dec.location}`;
+                sub.innerText = `Время отправления: ${dec.start_time} | Таймер депо: 15 минут`;
+            } else if (dec.action === "return") {
+                card.className = "bg-slate-900 border-2 border-sky-500 rounded-xl p-5 shadow-2xl relative overflow-hidden flex flex-col justify-between";
+                badge.className = "absolute top-0 right-0 px-3 py-1 text-[11px] font-bold font-mono tracking-wider uppercase rounded-bl-lg bg-sky-600 text-white";
+                badge.innerText = "СНЯТИЕ В ДЕПО";
+                title.innerText = `Снятие ${dec.count} составов в депо с ${dec.start_time}`;
+                sub.innerText = "Спад пассажиропотока: оптимизация тяги и ТОиР";
+            } else {
+                card.className = "bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl relative overflow-hidden flex flex-col justify-between";
+                badge.className = "absolute top-0 right-0 px-3 py-1 text-[11px] font-bold font-mono tracking-wider uppercase rounded-bl-lg bg-slate-800 text-emerald-400";
+                badge.innerText = "ГД В НОРМЕ";
+                title.innerText = "Движение в пределах планового графика (ГД)";
+                sub.innerText = "Корректировка парности и резервов не требуется";
+            }
+
+            loc.innerText = dec.location || "Линия 1";
+            
+            // Таймер
+            const sec = dec.timer_seconds || 600;
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            timer.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+            econ.innerText = dec.economic_impact_rub > 0 
+                ? `+${Math.round(dec.economic_impact_rub).toLocaleString()} ₽ (экономия)`
+                : (dec.economic_impact_rub < 0 ? `${Math.round(dec.economic_impact_rub).toLocaleString()} ₽ (затраты тяги)` : "0 ₽ (план)");
+
+            // SHAP причины
+            reasonsList.innerHTML = "";
+            (dec.dispatcher_reasons || []).forEach(r => {
+                const li = document.createElement("li");
+                li.className = "flex items-start space-x-2";
+                li.innerHTML = `<span class="text-rose-400 font-bold">•</span><span>${r}</span>`;
+                reasonsList.appendChild(li);
+            });
+            if (!dec.dispatcher_reasons || dec.dispatcher_reasons.length === 0) {
+                const li = document.createElement("li");
+                li.className = "flex items-start space-x-2";
+                li.innerHTML = `<span class="text-emerald-400 font-bold">•</span><span>Пассажиропоток согласуется с исторической нормой</span>`;
+                reasonsList.appendChild(li);
+            }
+        }
+
+        // Обновление карточки выбранной станции
+        function selectStation(code) {
+            selectedStationCode = code;
+            updateStationCard();
+        }
+
+        function updateStationCard() {
+            if (!stateData) return;
+            const st = stateData.stations.find(s => s.code === selectedStationCode) || stateData.stations[18];
+            
+            document.getElementById("station-card-name").innerText = `ст. ${st.name}`;
+            document.getElementById("station-card-type").innerText = st.type;
+            document.getElementById("station-card-flow").innerText = `${Math.round(st.inflow_15m).toLocaleString()} чел`;
+            document.getElementById("station-card-density").innerText = `${st.density_p_m2} чел/м² (LOS ${st.fruin_los})`;
+            
+            document.getElementById("h15-val").innerText = Math.round(st.pred_15m).toLocaleString();
+            document.getElementById("h30-val").innerText = Math.round(st.pred_30m).toLocaleString();
+            document.getElementById("h60-val").innerText = Math.round(st.pred_60m).toLocaleString();
+            document.getElementById("h120-val").innerText = Math.round(st.pred_120m).toLocaleString();
+
+            document.getElementById("station-turnaround").innerText = st.has_turnaround ? "Имеется (тупик)" : "Отсутствует";
+            document.getElementById("station-pos").innerText = `${st.order} из 19`;
+
+            document.getElementById("station-pill").innerText = `ст. ${st.name}`;
+            document.getElementById("station-pill").classList.remove("hidden");
+        }
+
+        // График Chart.js
+        function initChart() {
+            const ctx = document.getElementById("flowChart").getContext("2d");
+            flowChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: STATIONS.map(s => s.short),
+                    datasets: [
+                        {
+                            label: 'Факт притока',
+                            data: [],
+                            backgroundColor: 'rgba(56, 189, 248, 0.85)',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Прогноз +15м (LightGBM)',
+                            data: [],
+                            backgroundColor: 'rgba(16, 185, 129, 0.75)',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Прогноз +30м (LightGBM)',
+                            data: [],
+                            backgroundColor: 'rgba(245, 158, 11, 0.75)',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(51, 65, 85, 0.4)' },
+                            ticks: { color: '#94A3B8', font: { family: 'JetBrains Mono', size: 10 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(51, 65, 85, 0.4)' },
+                            ticks: { color: '#94A3B8', font: { family: 'JetBrains Mono', size: 10 } }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#F8FAFC', font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (!flowChart || !stateData) return;
+            const fact = stateData.stations.map(s => s.inflow_15m);
+            const p15 = stateData.stations.map(s => s.pred_15m);
+            const p30 = stateData.stations.map(s => s.pred_30m);
+
+            flowChart.data.datasets[0].data = fact;
+            flowChart.data.datasets[1].data = p15;
+            flowChart.data.datasets[2].data = p30;
+            flowChart.update();
+        }
+
+        // Управление воспроизведением через REST
+        let isPlaying = false;
+        async function togglePlay() {
+            isPlaying = !isPlaying;
+            const url = isPlaying ? "/api/playback/play" : "/api/playback/pause";
+            await fetch(url, { method: "POST" });
+            document.getElementById("play-icon").innerText = isPlaying ? "⏸" : "▶";
+            document.getElementById("play-text").innerText = isPlaying ? "Пауза" : "Авто-ход";
+            document.getElementById("btn-play-pause").className = isPlaying
+                ? "px-3.5 py-1.5 rounded-md bg-amber-600 hover:bg-amber-500 font-medium text-xs text-white flex items-center space-x-1.5 transition"
+                : "px-3.5 py-1.5 rounded-md bg-sky-600 hover:bg-sky-500 font-medium text-xs text-white flex items-center space-x-1.5 transition";
+        }
+
+        async function stepForward() {
+            await fetch("/api/playback/step", { method: "POST" });
+        }
+
+        async function setSpeed(s) {
+            await fetch(`/api/playback/speed?speed=${s}`, { method: "POST" });
+            document.querySelectorAll(".speed-btn").forEach(b => {
+                b.className = "speed-btn px-2 py-0.5 rounded text-slate-300 hover:bg-slate-800";
+            });
+            event.target.className = "speed-btn px-2 py-0.5 rounded bg-sky-900/60 text-sky-300 font-bold border border-sky-700";
+        }
+
+        async function seekTimeline(val) {
+            await fetch(`/api/playback/seek?index=${val}`, { method: "POST" });
+        }
+
+        async function jumpToSlot(idx) {
+            await fetch(`/api/playback/seek?index=${idx}`, { method: "POST" });
+        }
+
+        async function updateRainShock(val) {
+            document.getElementById("rain-val").innerText = `${parseFloat(val).toFixed(1)} мм/ч`;
+            await fetch(`/api/simulate/weather?rain_mm=${val}`, { method: "POST" });
+        }
+
+        async function confirmDispatch() {
+            const res = await fetch("/api/dispatch/execute", { method: "POST" });
+            const data = await res.json();
+            alert(`Директива диспетчера подтверждена! Состав введен в ГД. Экономический счетчик смены: +${data.savings_total_rub.toLocaleString()} ₽`);
+        }
+
+        function dismissDispatch() {
+            alert("Директива отклонена диспетчером. Сохраняется действующий базовый график движения.");
+        }
+
+        // Запуск при загрузке страницы
+        window.onload = () => {
+            renderMimicStations();
+            initChart();
+            initWebSocket();
+        };
+    </script>
+</body>
+</html>

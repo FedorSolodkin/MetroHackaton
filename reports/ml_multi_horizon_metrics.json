@@ -1,0 +1,106 @@
+{
+  "15m": {
+    "horizon_minutes": 15,
+    "ml_metrics": {
+      "wape_pct": 9.35,
+      "mae": 34.33,
+      "rmse": 64.46,
+      "r2": 0.9807
+    },
+    "baseline_metrics": {
+      "wape_pct": 10.98,
+      "mae": 40.29,
+      "rmse": 75.82,
+      "r2": 0.9732
+    },
+    "relative_improvement_pct": 14.79,
+    "peak_periods_ml": {
+      "morning_peak_07_10": {
+        "wape_pct": 8.76,
+        "mae": 58.25
+      },
+      "evening_peak_17_20": {
+        "wape_pct": 7.72,
+        "mae": 54.45
+      }
+    }
+  },
+  "30m": {
+    "horizon_minutes": 30,
+    "ml_metrics": {
+      "wape_pct": 9.47,
+      "mae": 34.77,
+      "rmse": 66.2,
+      "r2": 0.9796
+    },
+    "baseline_metrics": {
+      "wape_pct": 10.98,
+      "mae": 40.3,
+      "rmse": 75.84,
+      "r2": 0.9732
+    },
+    "relative_improvement_pct": 13.73,
+    "peak_periods_ml": {
+      "morning_peak_07_10": {
+        "wape_pct": 8.92,
+        "mae": 59.31
+      },
+      "evening_peak_17_20": {
+        "wape_pct": 7.73,
+        "mae": 54.55
+      }
+    }
+  },
+  "60m": {
+    "horizon_minutes": 60,
+    "ml_metrics": {
+      "wape_pct": 9.84,
+      "mae": 36.17,
+      "rmse": 69.48,
+      "r2": 0.9775
+    },
+    "baseline_metrics": {
+      "wape_pct": 10.98,
+      "mae": 40.33,
+      "rmse": 75.86,
+      "r2": 0.9732
+    },
+    "relative_improvement_pct": 10.32,
+    "peak_periods_ml": {
+      "morning_peak_07_10": {
+        "wape_pct": 9.66,
+        "mae": 64.25
+      },
+      "evening_peak_17_20": {
+        "wape_pct": 7.97,
+        "mae": 56.21
+      }
+    }
+  },
+  "120m": {
+    "horizon_minutes": 120,
+    "ml_metrics": {
+      "wape_pct": 10.41,
+      "mae": 38.27,
+      "rmse": 73.5,
+      "r2": 0.9749
+    },
+    "baseline_metrics": {
+      "wape_pct": 10.98,
+      "mae": 40.37,
+      "rmse": 75.91,
+      "r2": 0.9732
+    },
+    "relative_improvement_pct": 5.19,
+    "peak_periods_ml": {
+      "morning_peak_07_10": {
+        "wape_pct": 10.76,
+        "mae": 71.56
+      },
+      "evening_peak_17_20": {
+        "wape_pct": 8.15,
+        "mae": 57.47
+      }
+    }
+  }
+}

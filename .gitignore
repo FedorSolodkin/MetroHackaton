@@ -11,6 +11,11 @@ data/*.xlsx
 data/*.xls
 data/*.docx
 data/*.pdf
+data/*.parquet
+
+# Model binaries
+models/*.joblib
+models/*.txt
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/

@@ -1,0 +1,227 @@
+{
+  "model_name": "HistoricalMedianBaseline",
+  "train_period": "2026-02, 2026-05, 2026-07 (90 days)",
+  "test_period": "2026-09 (30 days)",
+  "station_level_metrics": {
+    "wape_pct": 10.98,
+    "mae": 40.22,
+    "rmse": 75.76,
+    "r2": 0.9733
+  },
+  "line_wide_metrics": {
+    "wape_pct": 6.58,
+    "mae": 458.4,
+    "rmse": 701.7,
+    "r2": 0.984
+  },
+  "period_metrics": {
+    "morning_peak_07_10": {
+      "wape": 10.58,
+      "mae": 70.4
+    },
+    "evening_peak_17_20": {
+      "wape": 9.23,
+      "mae": 65.1
+    },
+    "daytime_offpeak_10_17": {
+      "wape": 11.59,
+      "mae": 53.2
+    },
+    "night_offpeak": {
+      "wape": 12.72,
+      "mae": 16.7
+    }
+  },
+  "station_metrics": [
+    {
+      "station_code": 111,
+      "station_order": 1,
+      "station_name": "Проспект Ветеранов",
+      "wape": 8.13,
+      "mae": 42.8,
+      "rmse": 79.2,
+      "r2": 0.98,
+      "total_passengers": 1509936
+    },
+    {
+      "station_code": 112,
+      "station_order": 2,
+      "station_name": "Ленинский проспект",
+      "wape": 8.29,
+      "mae": 26.1,
+      "rmse": 44.8,
+      "r2": 0.979,
+      "total_passengers": 902693
+    },
+    {
+      "station_code": 113,
+      "station_order": 3,
+      "station_name": "Автово",
+      "wape": 11.4,
+      "mae": 31.4,
+      "rmse": 50.9,
+      "r2": 0.955,
+      "total_passengers": 788820
+    },
+    {
+      "station_code": 114,
+      "station_order": 4,
+      "station_name": "Кировский завод",
+      "wape": 9.68,
+      "mae": 18.2,
+      "rmse": 30.1,
+      "r2": 0.977,
+      "total_passengers": 540346
+    },
+    {
+      "station_code": 115,
+      "station_order": 5,
+      "station_name": "Нарвская",
+      "wape": 10.55,
+      "mae": 33.0,
+      "rmse": 61.4,
+      "r2": 0.971,
+      "total_passengers": 896705
+    },
+    {
+      "station_code": 116,
+      "station_order": 6,
+      "station_name": "Балтийская",
+      "wape": 12.31,
+      "mae": 62.1,
+      "rmse": 107.4,
+      "r2": 0.944,
+      "total_passengers": 1447830
+    },
+    {
+      "station_code": 117,
+      "station_order": 7,
+      "station_name": "Технологический институт",
+      "wape": 20.31,
+      "mae": 25.3,
+      "rmse": 52.3,
+      "r2": 0.877,
+      "total_passengers": 357916
+    },
+    {
+      "station_code": 118,
+      "station_order": 8,
+      "station_name": "Пушкинская",
+      "wape": 14.15,
+      "mae": 26.4,
+      "rmse": 42.5,
+      "r2": 0.934,
+      "total_passengers": 535737
+    },
+    {
+      "station_code": 119,
+      "station_order": 9,
+      "station_name": "Владимирская",
+      "wape": 11.87,
+      "mae": 27.7,
+      "rmse": 43.2,
+      "r2": 0.948,
+      "total_passengers": 668593
+    },
+    {
+      "station_code": 120,
+      "station_order": 10,
+      "station_name": "Площадь Восстания",
+      "wape": 12.38,
+      "mae": 97.7,
+      "rmse": 151.3,
+      "r2": 0.943,
+      "total_passengers": 2263401
+    },
+    {
+      "station_code": 121,
+      "station_order": 11,
+      "station_name": "Чернышевская",
+      "wape": 10.42,
+      "mae": 42.5,
+      "rmse": 74.1,
+      "r2": 0.973,
+      "total_passengers": 1169162
+    },
+    {
+      "station_code": 122,
+      "station_order": 12,
+      "station_name": "Площадь Ленина",
+      "wape": 10.87,
+      "mae": 52.8,
+      "rmse": 83.5,
+      "r2": 0.969,
+      "total_passengers": 1394536
+    },
+    {
+      "station_code": 123,
+      "station_order": 13,
+      "station_name": "Выборгская",
+      "wape": 11.07,
+      "mae": 22.0,
+      "rmse": 40.6,
+      "r2": 0.978,
+      "total_passengers": 569159
+    },
+    {
+      "station_code": 124,
+      "station_order": 14,
+      "station_name": "Лесная",
+      "wape": 14.58,
+      "mae": 53.2,
+      "rmse": 84.9,
+      "r2": 0.931,
+      "total_passengers": 1046847
+    },
+    {
+      "station_code": 125,
+      "station_order": 15,
+      "station_name": "Площадь Мужества",
+      "wape": 11.66,
+      "mae": 26.2,
+      "rmse": 45.2,
+      "r2": 0.948,
+      "total_passengers": 644025
+    },
+    {
+      "station_code": 126,
+      "station_order": 16,
+      "station_name": "Политехническая",
+      "wape": 21.71,
+      "mae": 43.0,
+      "rmse": 89.1,
+      "r2": 0.807,
+      "total_passengers": 568509
+    },
+    {
+      "station_code": 127,
+      "station_order": 17,
+      "station_name": "Академическая",
+      "wape": 9.28,
+      "mae": 33.6,
+      "rmse": 60.1,
+      "r2": 0.964,
+      "total_passengers": 1038146
+    },
+    {
+      "station_code": 128,
+      "station_order": 18,
+      "station_name": "Гражданский проспект",
+      "wape": 8.96,
+      "mae": 34.8,
+      "rmse": 59.4,
+      "r2": 0.975,
+      "total_passengers": 1114942
+    },
+    {
+      "station_code": 129,
+      "station_order": 19,
+      "station_name": "Девяткино",
+      "wape": 7.46,
+      "mae": 65.2,
+      "rmse": 119.1,
+      "r2": 0.987,
+      "total_passengers": 2506518
+    }
+  ]
+}

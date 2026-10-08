@@ -281,3 +281,38 @@ LINE1_VESTIBULES = [
     'пл. восстания-2', 'пл. мужества', 'пл.Ленина-1', 'пл.Ленина-2',
     'пр.ветеранов-1', 'пр.ветеранов-2', 'технологический институт-1'
 ]
+
+# Точные физические расстояния и время хода по 18 перегонам Линии 1
+# Откалибровано по GPS-координатам станций, длине линии 29.6 км и графиковому времени хода 49.5 мин (35.9 км/ч)
+INTERSTATION_SECTIONS: List[Dict[str, Any]] = [
+    {"from": "Проспект Ветеранов", "to": "Ленинский проспект", "distance_km": 1.45, "travel_time_min": 2.4, "cumulative_min": 2.4},
+    {"from": "Ленинский проспект", "to": "Автово", "distance_km": 1.77, "travel_time_min": 3.0, "cumulative_min": 5.4},
+    {"from": "Автово", "to": "Кировский завод", "distance_km": 1.45, "travel_time_min": 2.4, "cumulative_min": 7.8},
+    {"from": "Кировский завод", "to": "Нарвская", "distance_km": 2.59, "travel_time_min": 4.3, "cumulative_min": 12.1},
+    {"from": "Нарвская", "to": "Балтийская", "distance_km": 1.61, "travel_time_min": 2.7, "cumulative_min": 14.8},
+    {"from": "Балтийская", "to": "Технологический институт", "distance_km": 1.53, "travel_time_min": 2.6, "cumulative_min": 17.4},
+    {"from": "Технологический институт", "to": "Пушкинская", "distance_km": 0.80, "travel_time_min": 1.3, "cumulative_min": 18.7},
+    {"from": "Пушкинская", "to": "Владимирская", "distance_km": 1.36, "travel_time_min": 2.3, "cumulative_min": 21.0},
+    {"from": "Владимирская", "to": "Площадь Восстания", "distance_km": 0.86, "travel_time_min": 1.4, "cumulative_min": 22.4},
+    {"from": "Площадь Восстания", "to": "Чернышевская", "distance_km": 1.50, "travel_time_min": 2.5, "cumulative_min": 24.9},
+    {"from": "Чернышевская", "to": "Площадь Ленина", "distance_km": 1.29, "travel_time_min": 2.2, "cumulative_min": 27.1},
+    {"from": "Площадь Ленина", "to": "Выборгская", "distance_km": 1.87, "travel_time_min": 3.1, "cumulative_min": 30.2},
+    {"from": "Выборгская", "to": "Лесная", "distance_km": 1.61, "travel_time_min": 2.7, "cumulative_min": 32.9},
+    {"from": "Лесная", "to": "Площадь Мужества", "distance_km": 2.12, "travel_time_min": 3.5, "cumulative_min": 36.5},
+    {"from": "Площадь Мужества", "to": "Политехническая", "distance_km": 1.11, "travel_time_min": 1.9, "cumulative_min": 38.3},
+    {"from": "Политехническая", "to": "Академическая", "distance_km": 1.53, "travel_time_min": 2.6, "cumulative_min": 40.9},
+    {"from": "Академическая", "to": "Гражданский проспект", "distance_km": 2.88, "travel_time_min": 4.8, "cumulative_min": 45.7},
+    {"from": "Гражданский проспект", "to": "Девяткино", "distance_km": 2.28, "travel_time_min": 3.8, "cumulative_min": 49.5},
+]
+
+def get_interstation_travel_time(from_station: str, to_station: str) -> float:
+    """Возвращает время хода в минутах между любыми двумя станциями Линии 1."""
+    st_names = [s["name"] for s in STATIONS_LINE_1]
+    if from_station not in st_names or to_station not in st_names:
+        return 2.75
+    idx1, idx2 = st_names.index(from_station), st_names.index(to_station)
+    if idx1 == idx2:
+        return 0.0
+    start, end = min(idx1, idx2), max(idx1, idx2)
+    return sum(sec["travel_time_min"] for sec in INTERSTATION_SECTIONS[start:end])
+
