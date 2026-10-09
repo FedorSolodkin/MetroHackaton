@@ -18,21 +18,34 @@ import engine as E  # noqa: E402
 
 app = FastAPI(title="МетроПульс-1: демо")
 W = E.World()
+from ensemble import Ensemble  # noqa: E402
+W.ens = Ensemble(W)          # ансамбль: LightGBM, LightGBM-остаток, MLP-остаток, инерция (+ Chronos-2, если есть видеокарта)
+print('ансамбль:', W.ens.names, '| Chronos:', W.ens.chronos_note, flush=True)
 WD = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"]
-valid = W.scope_row & (~np.isnan(W.X).any(axis=1)) & np.isin(W.month, list(W.models))
+valid = (~np.isnan(W.X).any(axis=1)) & np.isin(W.month, list(W.models))
 DAYS = [d for d in sorted(set(W.svc[valid])) if (W.svc == d).sum() >= 90]
 CENTER = ["Площадь Восстания", "Площадь Ленина", "Чернышевская", "Владимирская"]
 SCENARIOS = [
-    {"id": "feb13", "title": "13 февраля (пт): утренний пик, нагрузка у предела", "day": "2026-02-13", "time": "06:45", "inj": []},
-    {"id": "sep11", "title": "11 сентября (пт): утренний пик", "day": "2026-09-11", "time": "06:45", "inj": []},
+    {"id": "feb13", "title": "13 февраля (пт): штатный утренний пик, система не вмешивается", "day": "2026-02-13", "time": "05:45", "inj": []},
+    {"id": "sep11", "title": "11 сентября (пт): штатный утренний пик", "day": "2026-09-11", "time": "05:45", "inj": []},
     {"id": "calm", "title": "12 мая (вт): обычный вечер, система молчит", "day": "2026-05-12", "time": "16:00", "inj": []},
+    {"id": "sat", "title": "12 сентября (сб): реальный всплеск выходного дня", "day": "2026-09-12", "time": "08:30", "inj": []},
+    {"id": "hol", "title": "11 мая (пн): праздничный день", "day": "2026-05-11", "time": "10:00", "inj": []},
     {"id": "event", "title": "Вброс: +80% у центра 17:15–19:00 (событие или сбой наземного транспорта)", "day": "2026-05-12", "time": "16:00",
      "inj": [{"stations": CENTER, "start": "17:15", "end": "19:00", "pct": 80}]},
-    {"id": "fail", "title": "Вброс: +25% по всей линии 07:30–09:00 (сбой на другой линии)", "day": "2026-05-12", "time": "06:45",
-     "inj": [{"stations": list(E.ST), "start": "07:30", "end": "09:00", "pct": 25}]},
+    {"id": "fail", "title": "Вброс: +45% по всей линии 07:30–09:00 (сбой на другой линии)", "day": "2026-05-12", "time": "05:45",
+     "inj": [{"stations": list(E.ST), "start": "07:30", "end": "09:00", "pct": 45}]},
 ]
 S = {"day": SCENARIOS[0]["day"], "c": 0, "playing": False, "rate": 0.5, "acc": 0.0, "inj": [], "ver": 0, "scenario": SCENARIOS[0]["id"]}
 CACHE = {}; XL = {"key": None, "X": None}
+
+
+CAL = pd.read_csv(os.path.join(HERE, "data", "calendar_2026.csv"), parse_dates=["day"]).set_index("day").code
+
+
+def kind(d):
+    d = pd.Timestamp(d); c = int(CAL.get(d, 0))
+    return " · выходной" if d.dayofweek >= 5 else (" · праздничный" if c == 1 else (" · сокращённый" if c == 2 else ""))
 
 
 def day0(day):
@@ -60,7 +73,7 @@ def set_scenario(sc):
 
 
 def clamp():
-    lo, hi = idx_at(S["day"], "06:45"), idx_at(S["day"], "23:00"); S["c"] = max(lo, min(hi, S["c"]))
+    lo, hi = idx_at(S["day"], "05:45"), idx_at(S["day"], "23:00"); S["c"] = max(lo, min(hi, S["c"]))
 
 
 set_scenario(SCENARIOS[0])
@@ -85,13 +98,13 @@ async def _tick():
 def api_state():
     clamp(); key = (S["day"], S["c"], S["ver"])
     if key not in CACHE:
-        CACHE.clear(); CACHE[key] = D.build_state(W, S["c"], x_live(), S["day"], {"scenario": S["scenario"], "inj": S["inj"], "playing": S["playing"]})
+        CACHE.clear(); CACHE[key] = D.build_state(W, S["c"], x_live(), S["day"], {"scenario": S["scenario"], "inj": S["inj"], "playing": S["playing"], "models": W.ens.names, "chronos": W.ens.chronos_note})
     out = dict(CACHE[key]); out["meta"] = dict(out["meta"], playing=S["playing"], rate=S["rate"], day=S["day"], dow=WD[pd.Timestamp(S["day"]).dayofweek]); return out
 
 
 @app.get("/api/emulator")
 def api_emulator():
-    return {"days": [{"day": str(pd.Timestamp(d).date()), "label": f"{pd.Timestamp(d):%d.%m} ({WD[pd.Timestamp(d).dayofweek]})"} for d in DAYS], "scenarios": [{"id": s["id"], "title": s["title"]} for s in SCENARIOS],
+    return {"days": [{"day": str(pd.Timestamp(d).date()), "label": f"{pd.Timestamp(d):%d.%m} ({WD[pd.Timestamp(d).dayofweek]})" + kind(d)} for d in DAYS], "scenarios": [{"id": s["id"], "title": s["title"]} for s in SCENARIOS],
             "day": S["day"], "time": E.hhmm(E.GRID[S["c"]] + pd.Timedelta(minutes=15)), "playing": S["playing"], "rate": S["rate"], "inj": S["inj"], "scenario": S["scenario"], "stations": list(reversed(E.ST))}
 
 
@@ -101,7 +114,7 @@ def api_emulator_set(body: dict = Body(...)):
         sc = next((s for s in SCENARIOS if s["id"] == body["scenario"]), None)
         if sc: set_scenario(sc)
     if "day" in body and body["day"] != S["day"]:
-        S.update(day=body["day"], c=idx_at(body["day"], body.get("time", "06:45")), inj=[], scenario="custom", ver=S["ver"] + 1, playing=False)
+        S.update(day=body["day"], c=idx_at(body["day"], body.get("time", "05:45")), inj=[], scenario="custom", ver=S["ver"] + 1, playing=False)
     if "time" in body: S["c"] = idx_at(S["day"], body["time"])
     if "step" in body: S["c"] += int(body["step"])
     if "playing" in body: S["playing"] = bool(body["playing"])

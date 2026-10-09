@@ -65,11 +65,11 @@ svg text{font-family:inherit}
   <select id="scn" title="Сценарий"></select>
   <button id="bBack" title="на 15 минут назад">⏮</button><button id="bPlay" title="пуск / пауза">▶ Пуск</button><button id="bFwd" title="на 15 минут вперёд">⏭</button>
   <select id="rate" title="Скорость"><option value="0.25">медленно</option><option value="0.5" selected>1×</option><option value="1">2×</option><option value="2">4×</option></select>
-  <input type="range" id="tm" min="405" max="1380" step="15" title="Время суток">
+  <input type="range" id="tm" min="345" max="1380" step="15" title="Время суток">
   <select id="day" title="Любой рабочий день"></select>
   <span class="sp"></span>
-  <button id="bEvent" title="Добавить событие: +40% у центра на 2 часа">+ Событие у центра</button>
-  <button id="bFail" title="Добавить сбой: +25% по всей линии на 90 минут">+ Сбой на других линиях</button>
+  <button id="bEvent" title="Добавить событие: +60% у центра на 2 часа">+ Событие у центра</button>
+  <button id="bFail" title="Добавить сбой: +40% по всей линии на 90 минут">+ Сбой на других линиях</button>
   <button id="bClear">Сбросить вбросы</button>
   <span class="tag hidden" id="injTag"></span>
   <button id="bHide" title="Скрыть панель эмулятора">✕</button>
@@ -118,8 +118,8 @@ $("bBack").onclick=()=>ctl({step:-1,playing:false});$("bFwd").onclick=()=>ctl({s
 $("tm").onchange=e=>{const v=+e.target.value;ctl({time:String(Math.floor(v/60)).padStart(2,"0")+":"+String(v%60).padStart(2,"0")})};
 const nowMin=()=>{const [h,m]=(emu?emu.time:"07:00").split(":").map(Number);return h*60+m};
 const hm=v=>String(Math.floor(v/60)%24).padStart(2,"0")+":"+String(v%60).padStart(2,"0");
-$("bEvent").onclick=()=>{const a=Math.ceil((nowMin()+30)/15)*15;ctl({inject:{stations:["Площадь Восстания","Площадь Ленина","Чернышевская","Владимирская"],start:hm(a),end:hm(a+120),pct:40}})};
-$("bFail").onclick=()=>{const a=Math.ceil((nowMin()+15)/15)*15;ctl({inject:{stations:emu.stations,start:hm(a),end:hm(a+90),pct:25}})};
+$("bEvent").onclick=()=>{const a=Math.ceil((nowMin()+30)/15)*15;ctl({inject:{stations:["Площадь Восстания","Площадь Ленина","Чернышевская","Владимирская"],start:hm(a),end:hm(a+120),pct:60}})};
+$("bFail").onclick=()=>{const a=Math.ceil((nowMin()+15)/15)*15;ctl({inject:{stations:emu.stations,start:hm(a),end:hm(a+90),pct:40}})};
 $("bClear").onclick=()=>ctl({clear_inject:true});
 $("bHide").onclick=()=>{$("emu").classList.add("hidden")};
 document.addEventListener("keydown",e=>{if(e.key==="e"||e.key==="E")$("emu").classList.toggle("hidden")});

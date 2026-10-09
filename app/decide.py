@@ -50,12 +50,13 @@ def build_state(w, c, X_live, day: str, extra=None):
     """c: глобальный индекс текущего (известного) слота. X_live: ряд с данными (возможно с вбросом). Возвращает JSON по контракту интерфейса."""
     month = int(w.month[c]); t_now = E.GRID[c] + pd.Timedelta(minutes=15); hour = t_now.hour; dow = int(w.dow[c])
     Pm = w.forecast(month, X_live, c)                                              # (8,19)
-    Nm = np.array([w.norm(c + k) for k in range(1, E.HORIZON + 1)])               # (8,19)
+    Nm = np.array([w.norm_adj(c + k) for k in range(1, E.HORIZON + 1)])               # (8,19)
     Nm = np.where(np.isnan(Nm), Pm, Nm)
     # инерция: рост/спад последних 30 минут частично сохраняется; смесь с моделью даёт WAPE 5.42% против 5.86% на ближайший час (проверено на 82 раб. днях)
-    a2 = X_live[c - 1:c + 1].sum(0); n2 = np.array([w.norm(c - 1), w.norm(c)]).sum(0); n2 = np.where(np.isnan(n2), a2, n2); dev_now = np.clip(a2 / np.clip(n2, 1, None) - 1, -0.6, 1.0)
-    wk = np.array([0.5] * 4 + [0.25] * 4)[:, None]; Pm = (1 - wk) * Pm + wk * Nm * (1 + 0.7 * dev_now[None, :])
-    phase = "am" if hour < 13 else "pm"
+    a2 = X_live[c - 1:c + 1].sum(0); n2 = np.array([w.norm_adj(c - 1), w.norm_adj(c)]).sum(0); n2 = np.where(np.isnan(n2), a2, n2); dev_now = np.clip(a2 / np.clip(n2, 1, None) - 1, -0.6, 1.0)
+    if getattr(w, "ens", None) is None:      # при ансамбле инерция уже входит в него
+        wk = np.array([0.5] * 4 + [0.25] * 4)[:, None]; Pm = (1 - wk) * Pm + wk * Nm * (1 + 0.7 * dev_now[None, :])
+    we = bool(w.weekend_day[c]); phase = "we" if we else ("am" if hour < 13 else "pm")
     pred_h = [Pm[4 * j:4 * j + 4].sum(0) for j in range(2)]; norm_h = [Nm[4 * j:4 * j + 4].sum(0) for j in range(2)]
     ss = w.share_south[phase]; share = {"to_veteranov": ss, "to_devyatkino": 1 - ss}
     dev_h = pred_h[0] / np.clip(norm_h[0], 1, None) - 1
@@ -67,8 +68,9 @@ def build_state(w, c, X_live, day: str, extra=None):
 
     # ---- рекомендации ----
     recs_raw = []   # по окнам
-    for j in range(2):
-        a, b = _period(t_now, j); h_plan = a.hour; P = E.plan_pairs(h_plan, month); cap = P * E.CAP_TRAIN
+    no_history = bool(np.isnan(w.NORM[c + 1]).any())   # нет предыдущих дней того же класса за 28 дней: норма из других месяцев, рекомендации не даём
+    for j in (range(0) if no_history else range(2)):
+        a, b = _period(t_now, j); h_plan = a.hour; P = E.plan_pairs(h_plan, month, we); cap = P * E.CAP_TRAIN
         Lp = {"south": None, "north": None}; Ln = {}
         sp, npd = w.seg_loads(pred_h[j], phase); sn, nn = w.seg_loads(norm_h[j], phase)
         loads = {"to_veteranov": (sp, sn), "to_devyatkino": (npd, nn)}
@@ -129,7 +131,7 @@ def build_state(w, c, X_live, day: str, extra=None):
     for d in ("to_veteranov", "to_devyatkino"):
         rows = []
         for i in range(12):
-            tt = t_now.floor("h") + pd.Timedelta(hours=i); h = tt.hour; base = E.plan_pairs(h, month); rec = base
+            tt = t_now.floor("h") + pd.Timedelta(hours=i); h = tt.hour; base = E.plan_pairs(h, month, we); rec = base
             for r in merged:
                 if r["direction"] == d and r["start"] <= tt + pd.Timedelta(minutes=59) and tt < r["end"]:
                     ad = r["delta"] * 60 / E.LOOP_MIN; ad = math.copysign(max(1, abs(round(ad))), ad)
@@ -157,13 +159,15 @@ def build_state(w, c, X_live, day: str, extra=None):
         if p >= 0.3: factors.append({"icon": "🌧️", "title": "Осадки", "text": f"Дождь/снег {p:.1f} мм/ч. По истории эффект на поток метро малый (−1…−3%).", "period": "сейчас"})
         if t is not None and (t <= -10 or t >= 28): factors.append({"icon": "🌡️", "title": "Экстремальная температура", "text": f"{t:.0f}°C.", "period": "сейчас"})
     # ---- данные для карты и мини-графика ----
-    cap0 = max(E.plan_pairs(t_now.hour, month) * E.CAP_TRAIN, 1); sp0, np0 = w.seg_loads(pred_h[0], phase); sn0, nn0 = w.seg_loads(norm_h[0], phase)
+    cap0 = max(E.plan_pairs(t_now.hour, month, we) * E.CAP_TRAIN, 1); sp0, np0 = w.seg_loads(pred_h[0], phase); sn0, nn0 = w.seg_loads(norm_h[0], phase)
     segments = {"to_veteranov": [{"a": E.ST[k], "b": E.ST[k + 1], "u": round(float(sp0[k] / cap0), 3), "u_norm": round(float(sn0[k] / cap0), 3)} for k in range(E.NS - 1)],
                 "to_devyatkino": [{"a": E.ST[k], "b": E.ST[k + 1], "u": round(float(np0[k] / cap0), 3), "u_norm": round(float(nn0[k] / cap0), 3)} for k in range(E.NS - 1)]}
     past = range(c - 7, c + 1); fut = range(c + 1, c + 1 + E.HORIZON)
-    nrm_all = [w.norm(k) for k in list(past) + list(fut)]; nrm_line = [float(np.nansum(x)) if x is not None else None for x in nrm_all]
+    nrm_all = [w.norm_adj(k) for k in list(past) + list(fut)]; nrm_line = [float(np.nansum(x)) if x is not None else None for x in nrm_all]
     series = {"t": [E.hhmm(E.GRID[k]) for k in list(past) + list(fut)], "actual": [round(float(X_live[k].sum())) for k in past] + [None] * E.HORIZON,
               "forecast": [None] * 8 + [round(float(v)) for v in Pm.sum(1)], "norm": [round(v) if v is not None and not math.isnan(v) else None for v in nrm_line], "now_index": 7}
+    if no_history:
+        factors.append({"icon": "ℹ️", "title": "Мало истории для нормы", "text": "Для этого дня в данных нет предыдущих таких же дней за 4 недели: отклонения показаны к норме из других месяцев, рекомендации отключены.", "period": "день"})
     state = {"updated": t_now.isoformat(), "threshold": E.THRESHOLD_PCT, "directions": DIRS, "factors": factors, "timeline": timeline,
              "recommendations": recommendations, "depots": depots, "stations": stations, "segments": segments, "series": series}
     state["meta"] = {"day": day, "time": E.hhmm(t_now), "model_month_excluded": month, "line_dev_pct": round(line_dev * 100, 1), **(extra or {})}

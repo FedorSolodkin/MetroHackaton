@@ -4,3 +4,6 @@ lightgbm
 numpy
 pandas
 pyarrow
+torch
+# Chronos-2 — необязательно (нужна видеокарта; без него ансамбль из 4 моделей, METRO_CHRONOS=0 отключает)
+chronos-forecasting>=2.0
