@@ -19,6 +19,7 @@ models/*.txt
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
+.virtual_documents/
 
 # Environments
 .env
