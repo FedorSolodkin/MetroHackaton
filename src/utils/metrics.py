@@ -48,7 +48,7 @@ def calculate_train_saturation(
     passengers_15min: Union[float, np.ndarray],
     trains_on_line: Union[int, np.ndarray],
     turnaround_min: float = 99.0,
-    comfort_capacity: int = 1478,
+    comfort_capacity: int = 1200,
     is_line_wide_inflow: bool = True,
     turnover_ratio: float = 3.0,
     directional_split: float = 0.65
