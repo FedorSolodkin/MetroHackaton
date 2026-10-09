@@ -1,0 +1,52 @@
+{
+  "trained_at": "2026-10-09 07:01:31",
+  "horizons": [
+    15,
+    30,
+    60,
+    120
+  ],
+  "quantiles": [
+    0.1,
+    0.5,
+    0.9
+  ],
+  "feature_columns": [
+    "station_code",
+    "station_order",
+    "has_turnaround",
+    "target_slot_index",
+    "day_type_code",
+    "dow",
+    "is_weekend",
+    "is_friday",
+    "is_holiday",
+    "is_pre_holiday",
+    "target_time_sin",
+    "target_time_cos",
+    "target_dow_sin",
+    "target_dow_cos",
+    "base_pax_target",
+    "base_mad_target",
+    "res_T",
+    "res_T_15",
+    "res_T_30",
+    "res_T_45",
+    "pax_T",
+    "pax_T_15",
+    "pax_T_30",
+    "res_mean_1h",
+    "res_std_1h",
+    "res_trend",
+    "pax_trend",
+    "pax_ratio_base_T",
+    "res_same_daytype_last",
+    "south_hub_res_T",
+    "north_hub_res_T",
+    "center_hub_res_T",
+    "south_hub_res_T_15",
+    "north_hub_res_T_15",
+    "center_hub_res_T_15"
+  ],
+  "training_samples": 173280
+}
