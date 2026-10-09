@@ -1,5 +1,5 @@
 {
-  "trained_at": "2026-10-09 07:14:59",
+  "trained_at": "2026-10-09 18:38:38",
   "horizons": [
     15,
     30,
@@ -48,5 +48,6 @@
     "north_hub_res_T_15",
     "center_hub_res_T_15"
   ],
-  "training_samples": 173280
+  "training_samples": 173280,
+  "architecture": "Blend (70% LightGBM + 30% Ridge)"
 }

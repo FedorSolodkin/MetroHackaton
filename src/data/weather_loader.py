@@ -37,7 +37,8 @@ class WeatherLoader:
             f"latitude={self.lat}&longitude={self.lon}&"
             f"start_date={start_date}&end_date={end_date}&"
             f"hourly=temperature_2m,apparent_temperature,precipitation,rain,snowfall,"
-            f"wind_speed_10m,wind_gusts_10m,weather_code"
+            f"wind_speed_10m,wind_gusts_10m,weather_code&"
+            f"timezone=Europe/Moscow"
         )
         response = requests.get(url, timeout=20)
         response.raise_for_status()

@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 import lightgbm as lgb
 import joblib
+from sklearn.linear_model import Ridge
 
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -31,8 +32,9 @@ QUANTILES = [0.10, 0.50, 0.90]
 
 class MultiHorizonFlowModel:
     """
-    Мультигоризонтный ансамбль квантильных моделей LightGBM на остатках пассажиропотока.
-    Для каждого горизонта H in [15, 30, 60, 120] хранит три квантильные модели (P10, P50, P90).
+    Мультигоризонтный ансамбль квантильных моделей LightGBM + Ridge на остатках пассажиропотока.
+    Для каждого горизонта H in [15, 30, 60, 120] хранит квантильные бустеры (P10, P50, P90)
+    и линейную модель Ridge для устойчивого блендинга (70% LightGBM + 30% Ridge).
     """
 
     def __init__(
@@ -47,6 +49,8 @@ class MultiHorizonFlowModel:
         
         # Словарь моделей: models[H][alpha] -> lgb.Booster
         self.models: Dict[int, Dict[float, lgb.Booster]] = {}
+        # Линейные модели Ridge на остатках: ridge_models[H] -> Ridge
+        self.ridge_models: Dict[int, Ridge] = {}
         # Прямые модели для сравнения (Direct): direct_models[H] -> lgb.Booster
         self.direct_models: Dict[int, lgb.Booster] = {}
         self.feature_cols = FEATURE_COLUMNS
@@ -104,12 +108,19 @@ class MultiHorizonFlowModel:
                 booster = lgb.train(params, dtrain_res, num_boost_round=num_boost_round)
                 self.models[H][q] = booster
 
+            # 2. Линейная модель Ridge для устойчивого блендинга
+            ridge = Ridge(alpha=100.0, random_state=42)
+            X_tr = dataset_h[feat_cols].fillna(0.0)
+            ridge.fit(X_tr, dataset_h["target_res"])
+            self.ridge_models[H] = ridge
+
         self.metadata = {
             "trained_at": time.strftime("%Y-%m-%d %H:%M:%S"),
             "horizons": self.horizons,
             "quantiles": QUANTILES,
             "feature_columns": self.feature_cols,
-            "training_samples": len(df_station)
+            "training_samples": len(df_station),
+            "architecture": "Blend (70% LightGBM + 30% Ridge)"
         }
         return self
 
@@ -120,6 +131,7 @@ class MultiHorizonFlowModel:
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Вычисляет прогноз (pred_p10, pred_p50, pred_p90) для станций на заданный горизонт.
+        Использует робастный бленд 70% LightGBM + 30% Ridge.
         Гарантирует монотонность квантилей: pred_p10 <= pred_p50 <= pred_p90 и неотрицательность потока.
         """
         if horizon_min not in self.models:
@@ -129,8 +141,18 @@ class MultiHorizonFlowModel:
         base_target = inference_features_df["base_pax_target"].values
 
         pred_res_p10 = self.models[horizon_min][0.10].predict(X)
-        pred_res_p50 = self.models[horizon_min][0.50].predict(X)
+        pred_res_p50_lgb = self.models[horizon_min][0.50].predict(X)
         pred_res_p90 = self.models[horizon_min][0.90].predict(X)
+
+        # Применяем бленд с Ridge моделью
+        if horizon_min in self.ridge_models:
+            pred_res_ridge = self.ridge_models[horizon_min].predict(X.fillna(0.0))
+            pred_res_p50 = 0.70 * pred_res_p50_lgb + 0.30 * pred_res_ridge
+            delta_shift = pred_res_p50 - pred_res_p50_lgb
+            pred_res_p10 = pred_res_p10 + 0.30 * delta_shift
+            pred_res_p90 = pred_res_p90 + 0.30 * delta_shift
+        else:
+            pred_res_p50 = pred_res_p50_lgb
 
         # Переход от остатков к абсолютным пассажирам
         p10 = np.maximum(0.0, base_target + pred_res_p10)
@@ -271,6 +293,7 @@ class MultiHorizonFlowModel:
         os.makedirs(os.path.dirname(os.path.abspath(model_path)), exist_ok=True)
         payload = {
             "models": self.models,
+            "ridge_models": self.ridge_models,
             "horizons": self.horizons,
             "feature_cols": self.feature_cols,
             "cat_cols": self.cat_cols,
@@ -287,6 +310,7 @@ class MultiHorizonFlowModel:
         """Загружает сохраненные модели."""
         payload = joblib.load(model_path)
         self.models = payload["models"]
+        self.ridge_models = payload.get("ridge_models", {})
         self.horizons = payload.get("horizons", SUPPORTED_HORIZONS)
         self.feature_cols = payload.get("feature_cols", FEATURE_COLUMNS)
         self.cat_cols = payload.get("cat_cols", CATEGORICAL_FEATURES)

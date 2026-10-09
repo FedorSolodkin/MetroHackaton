@@ -21,14 +21,15 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from configs.stations import STATIONS_LINE_1
 from src.data.operating_hours import operating_mask
 from src.models.baseline import MetroBaselineModel
-from src.models.feature_builder import MetroFeatureBuilder, STATION_METADATA
+from src.models.feature_builder import MetroFeatureBuilder, STATION_METADATA, FEATURE_COLUMNS
 from src.models.train_multi_horizon import MultiHorizonFlowModel, SUPPORTED_HORIZONS
+from src.models.explainability import MetroExplainabilityEngine
 
 
 class MetroFlowPredictor:
     """
     Промышленный сервис прогнозирования входящих пассажиропотоков станций Линии 1.
-    Интегрирует детерминированный медианный профиль и ансамбль квантильных LightGBM моделей.
+    Интегрирует детерминированный медианный профиль, бленд LightGBM+Ridge и модуль Semantic XAI.
     """
 
     def __init__(
@@ -37,7 +38,7 @@ class MetroFlowPredictor:
         z_anomaly_threshold: float = 2.0,
         pct_anomaly_threshold: float = 0.15,
         abs_anomaly_threshold: float = 100.0,
-        platform_capacity: float = 1458.0
+        platform_capacity: float = 1200.0
     ):
         self.models_dir = models_dir or self._resolve_models_dir()
         self.z_threshold = z_anomaly_threshold
@@ -48,6 +49,7 @@ class MetroFlowPredictor:
         self.baseline_model = MetroBaselineModel()
         self.mh_model: Optional[MultiHorizonFlowModel] = None
         self.feature_builder: Optional[MetroFeatureBuilder] = None
+        self.explain_engine = MetroExplainabilityEngine(feature_names=FEATURE_COLUMNS)
 
         self._load_models()
 
@@ -203,27 +205,96 @@ class MetroFlowPredictor:
 
         return result_df
 
-    @staticmethod
-    def to_dispatch_records(forecast_df: pd.DataFrame) -> List[Dict[str, Any]]:
+    def explain_station(
+        self,
+        current_time: Union[str, pd.Timestamp],
+        station_code: int,
+        horizon_min: int = 30,
+        history_pax_df: Optional[pd.DataFrame] = None,
+        external_context: Optional[Dict[str, Any]] = None,
+        top_k: int = 3
+    ) -> Dict[str, Any]:
         """
-        Конвертирует результат прогноза в формат JSON-контракта между модулями (WORK_PLAN.md §4):
-        [{ts, station, station_name, horizon_min, p10, p50, p90, base, is_anomaly, anomaly_score}]
+        Генерирует семантическое объяснение прогноза (Semantic XAI) для конкретной станции.
+        Возвращает структурированный словарь с top-k причинами на русском языке и долями влияния.
+        """
+        current_dt = pd.to_datetime(current_time)
+        if history_pax_df is None:
+            history_pax_df = pd.DataFrame(columns=["datetime", "station_code", "passengers"])
+
+        inf_features = self.feature_builder.build_inference_features(
+            current_time=current_dt,
+            history_pax_df=history_pax_df,
+            horizon_min=horizon_min
+        )
+
+        station_row = inf_features[inf_features["station_code"] == station_code]
+        if station_row.empty:
+            return {"station_code": station_code, "reasons": [], "summary": "Станция не найдена"}
+
+        booster = None
+        if self.mh_model is not None and horizon_min in self.mh_model.models:
+            booster = self.mh_model.models[horizon_min][0.50]
+
+        reasons = self.explain_engine.explain_prediction(
+            booster=booster,
+            features_row=station_row,
+            external_context=external_context,
+            top_k=top_k
+        )
+        summary = self.explain_engine.format_reasons_bullet(reasons)
+
+        return {
+            "station_code": station_code,
+            "horizon_min": horizon_min,
+            "reasons": reasons,
+            "summary": summary
+        }
+
+    def to_dispatch_records(
+        self,
+        forecast_df: pd.DataFrame,
+        history_pax_df: Optional[pd.DataFrame] = None,
+        external_context: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Конвертирует результат прогноза в формат JSON-контракта между модулями (WORK_PLAN.md §4).
+        Для аномальных станций автоматически подтягивает семантическое объяснение причин (Semantic XAI).
         """
         records = []
         for _, row in forecast_df.iterrows():
             ts_val = row["target_datetime"]
             ts_str = ts_val.isoformat() if hasattr(ts_val, "isoformat") else str(ts_val)
+            is_anom = bool(row["is_anomaly"])
+            st_code = int(row["station_code"])
+            h_min = int(row["horizon_min"])
+
+            reasons_list = []
+            summary_text = "Штатный режим"
+            if is_anom:
+                exp = self.explain_station(
+                    current_time=ts_val - pd.Timedelta(minutes=h_min),
+                    station_code=st_code,
+                    horizon_min=h_min,
+                    history_pax_df=history_pax_df,
+                    external_context=external_context
+                )
+                reasons_list = exp.get("reasons", [])
+                summary_text = exp.get("summary", "")
+
             records.append({
                 "ts": ts_str,
-                "station": int(row["station_code"]),
+                "station": st_code,
                 "station_name": str(row["station_name"]),
-                "horizon_min": int(row["horizon_min"]),
+                "horizon_min": h_min,
                 "base": float(row["base_pax"]),
                 "p10": float(row["pred_p10"]),
                 "p50": float(row["pred_p50"]),
                 "p90": float(row["pred_p90"]),
-                "is_anomaly": bool(row["is_anomaly"]),
-                "anomaly_score": float(row["anomaly_score"])
+                "is_anomaly": is_anom,
+                "anomaly_score": float(row["anomaly_score"]),
+                "reasons": reasons_list,
+                "explanation_text": summary_text
             })
         return records
 

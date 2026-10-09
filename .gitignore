@@ -16,6 +16,7 @@ data/*.parquet
 # Model binaries
 models/*.joblib
 models/*.txt
+catboost_info/
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/

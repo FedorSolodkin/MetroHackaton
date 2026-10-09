@@ -3,7 +3,7 @@
 
 Решение = Робастная статистика аномалий (MAD) 
         + Асимметричная экономика потерь (квантиль Newsvendor Cu/Co)
-        + Физика движения и парности (113 с, 32 пары/час, вместимость 1478 чел)
+        + Физика движения и парности (113 с, 32 пары/час, вместимость 1200 чел)
         + Операционные ограничения (горячий резерв 15 мин, зонный оборот по тупикам).
 
 Основано на регламентах Петербургского метрополитена и данных ментора.
@@ -24,7 +24,7 @@ try:
     DEFAULT_LEAD_COLD = METRO_CONFIG["reserve_times"]["cold_reserve_deploy_min"]
     DEFAULT_TARIFF = ENERGY_CONFIG["tariff_rub_per_kwh"]
 except ImportError:
-    DEFAULT_CAPACITY = 1478
+    DEFAULT_CAPACITY = 1200
     DEFAULT_MAX_TRAINS = 32
     DEFAULT_LEAD_HOT = 15
     DEFAULT_LEAD_COLD = 30
@@ -34,7 +34,7 @@ except ImportError:
 @dataclass
 class DispatchParams:
     """Параметры оптимизатора насыщенности линии подвижным составом."""
-    capacity: int = DEFAULT_CAPACITY        # Пассажиров в составе при норме комфорта (1478 для «Балтийца»)
+    capacity: int = DEFAULT_CAPACITY        # Пассажиров в составе (1200 чел. предельная вместимость 8 ваг.)
     target_load: float = 0.85              # Целевая комфортная наполняемость (85% номинала)
     min_trains: int = 12                   # Мин. парность (поездов/час, интервал ~5 мин в межпик)
     max_trains: int = DEFAULT_MAX_TRAINS   # Макс. парность (32 поезда/час, мин. интервал 113 с)
