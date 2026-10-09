@@ -1,0 +1,500 @@
+{
+  "assumptions": {
+    "round_km": 59.2,
+    "kwh_per_train_km": 24.5,
+    "tariff": 6.8,
+    "toir_rub_per_km": 120.0,
+    "capacity": 1460,
+    "util_peak": 0.85,
+    "p_min": 11,
+    "hops": 18,
+    "trip_hops": 6.0,
+    "safe_util": 0.6,
+    "value_of_time_rub_h": 300.0,
+    "weekdays": 22,
+    "weekend_days": 8,
+    "adoption": 0.25,
+    "k_peak_concentration": 3.172962067794579,
+    "peak_hour": 8,
+    "peak_entries_per_hour": 75094.5
+  },
+  "adaptive_offpeak": {
+    "km_month": 87024.0,
+    "share_of_plan_km": 0.12299196787148595,
+    "kwh": 2132088.0,
+    "energy_rub": 14498198.4,
+    "toir_rub": 10442880.0,
+    "total_rub": 24941078.4,
+    "passenger_hours_lost_month": 75645.75151471335,
+    "passenger_time_cost_rub_month": 22693725.454414006,
+    "net_after_passenger_time_rub_month": 2247352.945585992,
+    "workday": {
+      "table": [
+        {
+          "hour": 5,
+          "plan": 7,
+          "entries": 6509.0,
+          "util_plan": 0.337,
+          "new": 7,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 6,
+          "plan": 20,
+          "entries": 25862.0,
+          "util_plan": 0.468,
+          "new": 12,
+          "removed": 8,
+          "pax_hours_lost": 431.033
+        },
+        {
+          "hour": 7,
+          "plan": 30,
+          "entries": 60233.0,
+          "util_plan": 0.727,
+          "new": 30,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 8,
+          "plan": 32,
+          "entries": 75094.5,
+          "util_plan": 0.85,
+          "new": 32,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 9,
+          "plan": 26,
+          "entries": 49433.5,
+          "util_plan": 0.689,
+          "new": 26,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 10,
+          "plan": 22,
+          "entries": 34512.0,
+          "util_plan": 0.568,
+          "new": 16,
+          "removed": 6,
+          "pax_hours_lost": 294.136
+        },
+        {
+          "hour": 11,
+          "plan": 20,
+          "entries": 29872.0,
+          "util_plan": 0.541,
+          "new": 14,
+          "removed": 6,
+          "pax_hours_lost": 320.057
+        },
+        {
+          "hour": 12,
+          "plan": 18,
+          "entries": 30983.0,
+          "util_plan": 0.623,
+          "new": 18,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 13,
+          "plan": 18,
+          "entries": 30597.5,
+          "util_plan": 0.616,
+          "new": 18,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 14,
+          "plan": 20,
+          "entries": 33672.0,
+          "util_plan": 0.61,
+          "new": 20,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 15,
+          "plan": 24,
+          "entries": 41633.0,
+          "util_plan": 0.628,
+          "new": 24,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 16,
+          "plan": 28,
+          "entries": 52037.5,
+          "util_plan": 0.673,
+          "new": 28,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 17,
+          "plan": 30,
+          "entries": 72277.5,
+          "util_plan": 0.873,
+          "new": 30,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 18,
+          "plan": 30,
+          "entries": 71623.0,
+          "util_plan": 0.865,
+          "new": 30,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 19,
+          "plan": 28,
+          "entries": 42026.0,
+          "util_plan": 0.544,
+          "new": 20,
+          "removed": 8,
+          "pax_hours_lost": 300.186
+        },
+        {
+          "hour": 20,
+          "plan": 20,
+          "entries": 30839.5,
+          "util_plan": 0.559,
+          "new": 14,
+          "removed": 6,
+          "pax_hours_lost": 330.423
+        },
+        {
+          "hour": 21,
+          "plan": 15,
+          "entries": 23544.5,
+          "util_plan": 0.569,
+          "new": 11,
+          "removed": 4,
+          "pax_hours_lost": 285.388
+        },
+        {
+          "hour": 22,
+          "plan": 14,
+          "entries": 15429.0,
+          "util_plan": 0.399,
+          "new": 11,
+          "removed": 3,
+          "pax_hours_lost": 150.282
+        },
+        {
+          "hour": 23,
+          "plan": 11,
+          "entries": 9914.0,
+          "util_plan": 0.326,
+          "new": 11,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 0,
+          "plan": 7,
+          "entries": 1106.0,
+          "util_plan": 0.057,
+          "new": 7,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 1,
+          "plan": 0,
+          "entries": 0.0,
+          "util_plan": 0.0,
+          "new": 0,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        }
+      ],
+      "pairs_removed_per_day": 41,
+      "km_per_day": 2427.2000000000003,
+      "pax_hours_lost_per_day": 2111.5061147186148,
+      "total_plan_pairs": 420,
+      "days_per_month": 22
+    },
+    "weekend": {
+      "table": [
+        {
+          "hour": 5,
+          "plan": 7,
+          "entries": 3316.0,
+          "util_plan": 0.172,
+          "new": 7,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 6,
+          "plan": 16,
+          "entries": 11331.0,
+          "util_plan": 0.257,
+          "new": 11,
+          "removed": 5,
+          "pax_hours_lost": 160.952
+        },
+        {
+          "hour": 7,
+          "plan": 19,
+          "entries": 17446.0,
+          "util_plan": 0.333,
+          "new": 11,
+          "removed": 8,
+          "pax_hours_lost": 333.895
+        },
+        {
+          "hour": 8,
+          "plan": 21,
+          "entries": 21569.0,
+          "util_plan": 0.372,
+          "new": 11,
+          "removed": 10,
+          "pax_hours_lost": 466.861
+        },
+        {
+          "hour": 9,
+          "plan": 20,
+          "entries": 23510.5,
+          "util_plan": 0.426,
+          "new": 11,
+          "removed": 9,
+          "pax_hours_lost": 480.897
+        },
+        {
+          "hour": 10,
+          "plan": 20,
+          "entries": 23310.5,
+          "util_plan": 0.422,
+          "new": 11,
+          "removed": 9,
+          "pax_hours_lost": 476.806
+        },
+        {
+          "hour": 11,
+          "plan": 20,
+          "entries": 25941.5,
+          "util_plan": 0.47,
+          "new": 12,
+          "removed": 8,
+          "pax_hours_lost": 432.358
+        },
+        {
+          "hour": 12,
+          "plan": 19,
+          "entries": 28336.0,
+          "util_plan": 0.54,
+          "new": 13,
+          "removed": 6,
+          "pax_hours_lost": 344.162
+        },
+        {
+          "hour": 13,
+          "plan": 19,
+          "entries": 30353.5,
+          "util_plan": 0.579,
+          "new": 14,
+          "removed": 5,
+          "pax_hours_lost": 285.277
+        },
+        {
+          "hour": 14,
+          "plan": 19,
+          "entries": 33033.5,
+          "util_plan": 0.63,
+          "new": 19,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 15,
+          "plan": 20,
+          "entries": 33773.5,
+          "util_plan": 0.612,
+          "new": 20,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 16,
+          "plan": 20,
+          "entries": 32765.0,
+          "util_plan": 0.593,
+          "new": 15,
+          "removed": 5,
+          "pax_hours_lost": 273.042
+        },
+        {
+          "hour": 17,
+          "plan": 20,
+          "entries": 33258.0,
+          "util_plan": 0.602,
+          "new": 20,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 18,
+          "plan": 19,
+          "entries": 34500.0,
+          "util_plan": 0.658,
+          "new": 19,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 19,
+          "plan": 18,
+          "entries": 31773.0,
+          "util_plan": 0.639,
+          "new": 18,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 20,
+          "plan": 16,
+          "entries": 26880.5,
+          "util_plan": 0.609,
+          "new": 16,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 21,
+          "plan": 15,
+          "entries": 22538.0,
+          "util_plan": 0.544,
+          "new": 11,
+          "removed": 4,
+          "pax_hours_lost": 273.188
+        },
+        {
+          "hour": 22,
+          "plan": 13,
+          "entries": 17394.5,
+          "util_plan": 0.485,
+          "new": 11,
+          "removed": 2,
+          "pax_hours_lost": 121.64
+        },
+        {
+          "hour": 23,
+          "plan": 11,
+          "entries": 12153.0,
+          "util_plan": 0.4,
+          "new": 11,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 0,
+          "plan": 7,
+          "entries": 1404.5,
+          "util_plan": 0.073,
+          "new": 7,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        },
+        {
+          "hour": 1,
+          "plan": 0,
+          "entries": 0.0,
+          "util_plan": 0.0,
+          "new": 0,
+          "removed": 0,
+          "pax_hours_lost": 0.0
+        }
+      ],
+      "pairs_removed_per_day": 71,
+      "km_per_day": 4203.2,
+      "pax_hours_lost_per_day": 3649.0771238629786,
+      "total_plan_pairs": 339,
+      "days_per_month": 8
+    }
+  },
+  "realistic": {
+    "adoption": 0.25,
+    "km_month": 21756.0,
+    "kwh_month": 533022.0,
+    "energy_rub": 3624549.6,
+    "toir_rub": 2610720.0,
+    "total_rub_month": 6235269.6,
+    "total_rub_year": 74823235.19999999,
+    "passenger_time_cost_rub_month": 5673431.363603502,
+    "net_rub_month": 561838.236396498
+  },
+  "sensitivity": [
+    {
+      "kwh_per_km": 12.0,
+      "util_peak": 0.7,
+      "km_month": 187308.80000000002,
+      "total_rub_month": 37761454.080000006
+    },
+    {
+      "kwh_per_km": 12.0,
+      "util_peak": 0.85,
+      "km_month": 87024.0,
+      "total_rub_month": 17544038.4
+    },
+    {
+      "kwh_per_km": 12.0,
+      "util_peak": 1.0,
+      "km_month": 32560.000000000004,
+      "total_rub_month": 6564096.000000001
+    },
+    {
+      "kwh_per_km": 24.5,
+      "util_peak": 0.7,
+      "km_month": 187308.80000000002,
+      "total_rub_month": 53682702.080000006
+    },
+    {
+      "kwh_per_km": 24.5,
+      "util_peak": 0.85,
+      "km_month": 87024.0,
+      "total_rub_month": 24941078.4
+    },
+    {
+      "kwh_per_km": 24.5,
+      "util_peak": 1.0,
+      "km_month": 32560.000000000004,
+      "total_rub_month": 9331696.000000002
+    }
+  ],
+  "old_claim_recomputed": {
+    "trips": 120,
+    "period_days": 120,
+    "km": 7104.0,
+    "kwh": 174048.0,
+    "energy_rub": 1183526.4,
+    "toir_rub": 852480.0,
+    "total_rub": 2036006.4,
+    "per_month_30d": 509001.6,
+    "per_year": 6108019.199999999,
+    "claimed_per_month_rub": 10320691.2,
+    "claimed_per_year_rub": 123848294.4
+  },
+  "short_turn": {
+    "saved_km_per_trip": 29.6,
+    "per_10_trips_per_day_month": {
+      "km": 8880.0,
+      "kwh": 217560.0,
+      "energy_rub": 1479408.0,
+      "toir_rub": 1065600.0,
+      "total_rub": 2545008.0
+    }
+  }
+}
