@@ -109,6 +109,73 @@ class TestMetroFlowPredictor(unittest.TestCase):
         self.assertTrue(st120["is_anomaly"], "Аномальный всплеск на станции 120 не был обнаружен!")
         self.assertGreater(st120["anomaly_score"], 2.0, "Z-score всплеска ниже ожидаемого порога!")
 
+    def test_no_false_alarm_on_normal_weekday(self):
+        # На регулярном буднем дне (среда 08:30) при нормальном пассажиропотоке система обязана молчать (контроль: система молчит)
+        current_time = pd.Timestamp("2026-05-13 08:30:00")
+        all_codes = list(range(111, 130))
+        history = []
+        for dt in pd.date_range("2026-05-13 06:30:00", current_time, freq="15min"):
+            target_df = pd.DataFrame({
+                "station_code": all_codes,
+                "datetime": [dt] * len(all_codes)
+            })
+            base_df = self.predictor.baseline_model.predict(target_df)
+            for _, r in base_df.iterrows():
+                history.append({
+                    "datetime": dt,
+                    "station_code": int(r["station_code"]),
+                    "passengers": float(r["base_pax"]) # штатный поток по графику
+                })
+        history_df = pd.DataFrame(history)
+
+        forecast_df = self.predictor.predict(current_time, history_df=history_df, horizons=[15, 30])
+        # При штатном потоке ни одна станция не должна быть помечена как аномальная
+        anomalous_stations = forecast_df[forecast_df["is_anomaly"]]
+        self.assertEqual(len(anomalous_stations), 0, f"Ложные срабатывания на штатном расписании: {anomalous_stations['station_name'].tolist()}")
+
+    def test_vestibule_level_history_auto_aggregated(self):
+        # Проверяем, что при подаче телеметрии по 24 вестибюлям предиктор не путает вестибюли с лагами во времени
+        current_time = pd.Timestamp("2026-05-08 16:30:00")
+        history = [
+            {"datetime": current_time, "station_code": 111, "vestibule": "пр. Ветеранов-1", "passengers": 400.0},
+            {"datetime": current_time, "station_code": 111, "vestibule": "пр. Ветеранов-2", "passengers": 300.0},
+            {"datetime": current_time - pd.Timedelta(minutes=15), "station_code": 111, "vestibule": "пр. Ветеранов-1", "passengers": 380.0},
+            {"datetime": current_time - pd.Timedelta(minutes=15), "station_code": 111, "vestibule": "пр. Ветеранов-2", "passengers": 310.0},
+        ]
+        history_df = pd.DataFrame(history)
+
+        forecast_df = self.predictor.predict(current_time, history_df=history_df, horizons=[15])
+        self.assertEqual(len(forecast_df), 19)
+        st111 = forecast_df[forecast_df["station_code"] == 111].iloc[0]
+        # Проверяем, что прогноз построен корректно без падений
+        self.assertGreater(st111["pred_p50"], 0.0)
+
+    def test_stale_telemetry_safe_handling(self):
+        # Данные 2-часовой давности не должны маскироваться под свежее состояние момента T
+        current_time = pd.Timestamp("2026-05-08 16:30:00")
+        stale_history = pd.DataFrame([
+            {"datetime": pd.Timestamp("2026-05-08 14:00:00"), "station_code": 111, "passengers": 2500.0}
+        ])
+
+        forecast_df = self.predictor.predict(current_time, history_df=stale_history, horizons=[15])
+        st111 = forecast_df[forecast_df["station_code"] == 111].iloc[0]
+        # Устаревшие данные должны быть сброшены, Z-score не должен раздуваться
+        self.assertLess(st111["anomaly_score"], 2.0, "Устаревшие данные вызвали ложную тревогу!")
+
+    def test_dispatch_contract_records_format(self):
+        # Проверяем формат to_dispatch_records по контракту §4 WORK_PLAN.md
+        current_time = pd.Timestamp("2026-05-08 16:30:00")
+        forecast_df = self.predictor.predict(current_time, horizons=[15])
+        records = self.predictor.to_dispatch_records(forecast_df)
+
+        self.assertEqual(len(records), 19)
+        sample = records[0]
+        for key in ["ts", "station", "station_name", "horizon_min", "base", "p10", "p50", "p90", "is_anomaly", "anomaly_score"]:
+            self.assertIn(key, sample, f"Отсутствует обязательный ключ {key} в JSON-контракте")
+        self.assertIsInstance(sample["ts"], str)
+        self.assertIsInstance(sample["station"], int)
+        self.assertIsInstance(sample["is_anomaly"], bool)
+
 
 if __name__ == "__main__":
     unittest.main()

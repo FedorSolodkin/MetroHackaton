@@ -157,18 +157,23 @@ class MultiHorizonFlowModel:
         - Ошибка на пиках (07:30-10:00, 17:00-19:30) и на аномальных слотах (|res| > 120)
         """
         results_by_horizon = {}
+        df_clean = df_station.copy()
+        df_clean["month"] = pd.to_datetime(df_clean["datetime"]).dt.month
 
         for H in self.horizons:
-            dataset_h, feat_cols = self.feature_builder.build_training_dataset_for_horizon(df_station, horizon_min=H)
-            
             fold_metrics = []
             
             for val_m in months:
-                tr_mask = dataset_h["month"] != val_m
-                val_mask = dataset_h["month"] == val_m
+                tr_raw = df_clean[df_clean["month"] != val_m].copy()
+                val_raw = df_clean[df_clean["month"] == val_m].copy()
                 
-                tr_df = dataset_h[tr_mask]
-                val_df = dataset_h[val_mask].copy()
+                # Строго Zero Leakage: базовый профиль обучается только на 3 тренировочных месяцах фолда!
+                fold_base = MetroBaselineModel(calendar_path=self.baseline_model.calendar_path)
+                fold_base.fit(tr_raw)
+                fold_builder = MetroFeatureBuilder(baseline_model=fold_base)
+                
+                tr_df, feat_cols = fold_builder.build_training_dataset_for_horizon(tr_raw, horizon_min=H)
+                val_df, _ = fold_builder.build_training_dataset_for_horizon(val_raw, horizon_min=H)
                 
                 # 1. Baseline прогноз на валидационном месяце
                 y_true = val_df["target_pax"].values

@@ -121,12 +121,6 @@ class MetroFeatureBuilder:
         df = self.baseline_model.predict(df_station).copy()
         df["residual"] = df["passengers"] - df["base_pax"]
         df["month"] = df["datetime"].dt.month
-        df["dow"] = df["datetime"].dt.dayofweek
-        df["is_weekend"] = (df["dow"] >= 5).astype(int)
-        df["is_friday"] = (df["dow"] == 4).astype(int)
-        df["is_holiday"] = (df["day_type"] == "holiday").astype(int)
-        df["is_pre_holiday"] = (df["day_type"] == "pre_holiday").astype(int)
-        df["day_type_code"] = df["day_type"].map(DAY_TYPE_TO_CODE).fillna(0).astype(int)
 
         # Станционные метаданные
         df["station_order"] = df["station_code"].map(lambda c: STATION_METADATA.get(c, {}).get("station_order", 0))
@@ -143,29 +137,42 @@ class MetroFeatureBuilder:
         # 3. Извлечение пространственных признаков хабов (Veteranov, Devyatkino, Vosstaniya)
         piv_res = df.pivot(index="datetime", columns="station_code", values="residual")
         hubs = pd.DataFrame(index=piv_res.index)
-        hubs["south_hub_res_T"] = piv_res[HUB_SOUTH] if HUB_SOUTH in piv_res else 0.0
-        hubs["north_hub_res_T"] = piv_res[HUB_NORTH] if HUB_NORTH in piv_res else 0.0
-        hubs["center_hub_res_T"] = piv_res[HUB_CENTER] if HUB_CENTER in piv_res else 0.0
-        hubs["south_hub_res_T_15"] = hubs["south_hub_res_T"].shift(1).fillna(0.0)
-        hubs["north_hub_res_T_15"] = hubs["north_hub_res_T"].shift(1).fillna(0.0)
-        hubs["center_hub_res_T_15"] = hubs["center_hub_res_T"].shift(1).fillna(0.0)
-        hubs = hubs.reset_index()
+        hubs["datetime"] = piv_res.index
+        hubs["south_hub_res_T"] = piv_res[HUB_SOUTH].values if HUB_SOUTH in piv_res else 0.0
+        hubs["north_hub_res_T"] = piv_res[HUB_NORTH].values if HUB_NORTH in piv_res else 0.0
+        hubs["center_hub_res_T"] = piv_res[HUB_CENTER].values if HUB_CENTER in piv_res else 0.0
 
-        df = df.merge(hubs, on="datetime", how="left").sort_values(["station_code", "datetime"]).reset_index(drop=True)
+        # Проверяем непрерывность 15-минутного шага для хабов (исключаем ночные скачки)
+        prev_hub_dt = hubs["datetime"].shift(1)
+        is_hub_c15 = (hubs["datetime"] - prev_hub_dt) == pd.Timedelta(minutes=15)
+        hubs["south_hub_res_T_15"] = np.where(is_hub_c15, hubs["south_hub_res_T"].shift(1), 0.0)
+        hubs["north_hub_res_T_15"] = np.where(is_hub_c15, hubs["north_hub_res_T"].shift(1), 0.0)
+        hubs["center_hub_res_T_15"] = np.where(is_hub_c15, hubs["center_hub_res_T"].shift(1), 0.0)
+
+        df = df.merge(hubs.drop(columns=["datetime"]), left_on="datetime", right_index=True, how="left").sort_values(["station_code", "datetime"]).reset_index(drop=True)
         g = df.groupby(["station_code", "month"])
 
-        # 4. Лаги на момент T (текущее состояние станции)
+        # 4. Лаги на момент T с проверкой временной непрерывности (исключаем перетекание через ночной перерыв)
+        prev_dt_1 = g["datetime"].shift(1)
+        prev_dt_2 = g["datetime"].shift(2)
+        prev_dt_3 = g["datetime"].shift(3)
+
+        is_c15 = (df["datetime"] - prev_dt_1) == pd.Timedelta(minutes=15)
+        is_c30 = (df["datetime"] - prev_dt_2) == pd.Timedelta(minutes=30)
+        is_c45 = (df["datetime"] - prev_dt_3) == pd.Timedelta(minutes=45)
+
         df["res_T"] = df["residual"]
-        df["res_T_15"] = g["residual"].shift(1).fillna(0.0)
-        df["res_T_30"] = g["residual"].shift(2).fillna(0.0)
-        df["res_T_45"] = g["residual"].shift(3).fillna(0.0)
+        df["res_T_15"] = np.where(is_c15, g["residual"].shift(1), 0.0)
+        df["res_T_30"] = np.where(is_c30, g["residual"].shift(2), 0.0)
+        df["res_T_45"] = np.where(is_c45, g["residual"].shift(3), 0.0)
 
         df["pax_T"] = df["passengers"]
-        df["pax_T_15"] = g["passengers"].shift(1).fillna(df["base_pax"])
-        df["pax_T_30"] = g["passengers"].shift(2).fillna(df["base_pax"])
+        df["pax_T_15"] = np.where(is_c15, g["passengers"].shift(1), df["base_pax"])
+        df["pax_T_30"] = np.where(is_c30, g["passengers"].shift(2), df["base_pax"])
 
         df["res_mean_1h"] = (df["res_T"] + df["res_T_15"] + df["res_T_30"] + df["res_T_45"]) / 4.0
-        df["res_std_1h"] = g["residual"].transform(lambda x: x.rolling(4, min_periods=1).std()).fillna(0.0)
+        lag_res_matrix = np.column_stack([df["res_T"].values, df["res_T_15"].values, df["res_T_30"].values, df["res_T_45"].values])
+        df["res_std_1h"] = np.std(lag_res_matrix, axis=1)
         df["res_trend"] = df["res_T"] - df["res_T_30"]
         df["pax_trend"] = df["pax_T"] - df["pax_T_30"]
         df["pax_ratio_base_T"] = df["pax_T"] / np.maximum(df["base_pax"], 10.0)
@@ -179,6 +186,15 @@ class MetroFeatureBuilder:
         df["target_res"] = g["residual"].shift(-k)
         df["target_slot_index"] = g["slot_index"].shift(-k)
         
+        # Целевой календарный контекст (строго t = T + H для полной симметрии с онлайн-инференсом)
+        target_day_types = self.baseline_model.assign_day_type(df["target_datetime"])
+        df["day_type_code"] = target_day_types.map(DAY_TYPE_TO_CODE).fillna(0).astype(int)
+        df["dow"] = df["target_datetime"].dt.dayofweek
+        df["is_weekend"] = (df["dow"] >= 5).astype(int)
+        df["is_friday"] = (df["dow"] == 4).astype(int)
+        df["is_holiday"] = (target_day_types == "holiday").astype(int)
+        df["is_pre_holiday"] = (target_day_types == "pre_holiday").astype(int)
+
         # Целевые циклы
         df["target_time_sin"] = np.sin(2 * np.pi * df["target_slot_index"] / 96.0)
         df["target_time_cos"] = np.cos(2 * np.pi * df["target_slot_index"] / 96.0)
@@ -186,7 +202,7 @@ class MetroFeatureBuilder:
         df["target_dow_cos"] = np.cos(2 * np.pi * df["dow"] / 7.0)
 
         # Отсекаем невалидные целевые точки (выход за пределы месяца/ночные разрывы)
-        valid = df.dropna(subset=["target_pax", "base_pax_target", "target_slot_index", "target_datetime"]).copy()
+        valid = df.dropna(subset=["target_pax", "base_pax_target", "target_slot_index", "target_datetime", "dow"]).copy()
         valid = valid[valid["target_datetime"] - valid["datetime"] == pd.Timedelta(minutes=horizon_min)].copy()
         valid["target_slot_index"] = valid["target_slot_index"].astype(int)
         
@@ -234,22 +250,40 @@ class MetroFeatureBuilder:
         base_map = dict(zip(target_base_df["station_code"], target_base_df["base_pax"]))
         mad_map = dict(zip(target_base_df["station_code"], target_base_df["base_mad"]))
 
-        # Обработка истории до current_time
-        hist = history_pax_df[pd.to_datetime(history_pax_df["datetime"]) <= current_time].copy()
-        hist["datetime"] = pd.to_datetime(hist["datetime"])
-        
-        # Получаем базовый профиль истории
-        hist_with_base = self.baseline_model.predict(hist)
-        hist_with_base["residual"] = hist_with_base["passengers"] - hist_with_base["base_pax"]
+        # Обработка истории до current_time: автоматическая агрегация вестибюлей и дедупликация
+        if history_pax_df is not None and len(history_pax_df) > 0:
+            hist = history_pax_df.copy()
+            hist["datetime"] = pd.to_datetime(hist["datetime"])
+            hist = hist[hist["datetime"] <= current_time]
+            if "station_code" in hist.columns and len(hist) > 0:
+                # Если поданы данные на уровне вестибюлей (24 шт.) — агрегируем в 19 станций
+                hist = hist.groupby(["datetime", "station_code"], as_index=False)["passengers"].sum()
+        else:
+            hist = pd.DataFrame(columns=["datetime", "station_code", "passengers"])
 
-        # Извлекаем состояние хабов на current_time и T - 15 мин
-        def get_hub_res(hub_code, dt_point):
+        # Получаем базовый профиль истории
+        if len(hist) > 0:
+            hist_with_base = self.baseline_model.predict(hist)
+            hist_with_base["residual"] = hist_with_base["passengers"] - hist_with_base["base_pax"]
+        else:
+            hist_with_base = pd.DataFrame(columns=["datetime", "station_code", "passengers", "base_pax", "residual"])
+
+        # Извлекаем состояние хабов на current_time и T - 15 мин с контролем свежести (не старше 35 мин)
+        def get_hub_res(hub_code: int, dt_point: pd.Timestamp) -> float:
+            if len(hist_with_base) == 0:
+                return 0.0
             sub = hist_with_base[(hist_with_base["station_code"] == hub_code) & (hist_with_base["datetime"] == dt_point)]
             if len(sub) > 0:
                 return float(sub["residual"].iloc[-1])
-            # Если точной точки нет, ищем ближайшую предшествующую
+            # Если точной отметки нет, ищем ближайшую предшествующую в пределах 35 минут
             sub_prev = hist_with_base[(hist_with_base["station_code"] == hub_code) & (hist_with_base["datetime"] <= dt_point)]
-            return float(sub_prev["residual"].iloc[-1]) if len(sub_prev) > 0 else 0.0
+            if len(sub_prev) > 0:
+                last_dt = sub_prev["datetime"].iloc[-1]
+                age_min = (dt_point - last_dt).total_seconds() / 60.0
+                if age_min <= 35.0:
+                    decay = max(0.0, 1.0 - (age_min / 60.0))
+                    return float(sub_prev["residual"].iloc[-1]) * decay
+            return 0.0
 
         south_hub_T = get_hub_res(HUB_SOUTH, current_time)
         north_hub_T = get_hub_res(HUB_NORTH, current_time)
@@ -259,33 +293,84 @@ class MetroFeatureBuilder:
         north_hub_T_15 = get_hub_res(HUB_NORTH, current_time - pd.Timedelta(minutes=15))
         center_hub_T_15 = get_hub_res(HUB_CENTER, current_time - pd.Timedelta(minutes=15))
 
+        # Временные точки для точных лагов
+        t_0 = current_time
+        t_15 = current_time - pd.Timedelta(minutes=15)
+        t_30 = current_time - pd.Timedelta(minutes=30)
+        t_45 = current_time - pd.Timedelta(minutes=45)
+
         rows = []
         for code in all_codes:
             meta = STATION_METADATA[code]
-            st_hist = hist_with_base[hist_with_base["station_code"] == code].sort_values("datetime")
-            
-            # Извлекаем последние 4 интервала (T, T-15, T-30, T-45)
-            past_pax = st_hist["passengers"].tolist()
-            past_res = st_hist["residual"].tolist()
-            
-            pax_T = past_pax[-1] if len(past_pax) >= 1 else base_map.get(code, 100.0)
-            pax_T_15 = past_pax[-2] if len(past_pax) >= 2 else pax_T
-            pax_T_30 = past_pax[-3] if len(past_pax) >= 3 else pax_T_15
-            
-            res_T = past_res[-1] if len(past_res) >= 1 else 0.0
-            res_T_15 = past_res[-2] if len(past_res) >= 2 else res_T
-            res_T_30 = past_res[-3] if len(past_res) >= 3 else res_T_15
-            res_T_45 = past_res[-4] if len(past_res) >= 4 else res_T_30
-
-            last4_res = past_res[-4:] if len(past_res) >= 1 else [0.0]
-            res_mean_1h = float(np.mean(last4_res))
-            res_std_1h = float(np.std(last4_res)) if len(last4_res) > 1 else 0.0
-            res_trend = float(res_T - res_T_30)
-            pax_trend = float(pax_T - pax_T_30)
-            
             base_target = base_map.get(code, 100.0)
             mad_target = mad_map.get(code, 15.0)
+
+            st_hist = hist_with_base[hist_with_base["station_code"] == code] if len(hist_with_base) > 0 else pd.DataFrame()
+            
+            pax_T = base_target
+            res_T = 0.0
+            pax_T_15 = base_target
+            res_T_15 = 0.0
+            pax_T_30 = base_target
+            res_T_30 = 0.0
+            res_T_45 = 0.0
+
+            if len(st_hist) > 0:
+                st_by_dt = st_hist.set_index("datetime")
+                
+                # Извлечение t_0 (T) с учетом задержки поступления телеметрии
+                if t_0 in st_by_dt.index:
+                    pax_T = float(st_by_dt.loc[t_0, "passengers"])
+                    res_T = float(st_by_dt.loc[t_0, "residual"])
+                else:
+                    # Если телеметрия на момент T задерживается, проверяем свежесть последней записи
+                    latest_dt = st_by_dt.index.max()
+                    age_min = (current_time - latest_dt).total_seconds() / 60.0
+                    if age_min <= 20.0: # задержка 1 квант (15 мин)
+                        res_T = float(st_by_dt.loc[latest_dt, "residual"]) * 0.9
+                        pax_T = float(np.maximum(0.0, base_target + res_T))
+                    elif age_min <= 35.0: # задержка 2 кванта (30 мин)
+                        res_T = float(st_by_dt.loc[latest_dt, "residual"]) * 0.7
+                        pax_T = float(np.maximum(0.0, base_target + res_T))
+                    # Если данные старше 35 мин — они устарели (stale), fallback на базовый профиль
+
+                if t_15 in st_by_dt.index:
+                    pax_T_15 = float(st_by_dt.loc[t_15, "passengers"])
+                    res_T_15 = float(st_by_dt.loc[t_15, "residual"])
+                else:
+                    pax_T_15 = pax_T
+                    res_T_15 = res_T
+
+                if t_30 in st_by_dt.index:
+                    pax_T_30 = float(st_by_dt.loc[t_30, "passengers"])
+                    res_T_30 = float(st_by_dt.loc[t_30, "residual"])
+                else:
+                    pax_T_30 = pax_T_15
+                    res_T_30 = res_T_15
+
+                if t_45 in st_by_dt.index:
+                    res_T_45 = float(st_by_dt.loc[t_45, "residual"])
+                else:
+                    res_T_45 = res_T_30
+
+            last4_res = [res_T, res_T_15, res_T_30, res_T_45]
+            res_mean_1h = float(np.mean(last4_res))
+            res_std_1h = float(np.std(last4_res))
+            res_trend = float(res_T - res_T_30)
+            pax_trend = float(pax_T - pax_T_30)
             pax_ratio_base_T = float(pax_T / max(base_target, 10.0))
+
+            # Динамический поиск лага того же типа дня (res_same_daytype_last)
+            res_same_daytype = 0.0
+            if len(st_hist) > 0 and "day_type" in st_hist.columns and "slot_index" in st_hist.columns:
+                cur_day_start = current_time.normalize()
+                prior_daytype_rows = st_hist[
+                    (st_hist["day_type"] == target_day_type) &
+                    (st_hist["slot_index"] == target_slot) &
+                    (st_hist["datetime"] < cur_day_start)
+                ]
+                if len(prior_daytype_rows) > 0:
+                    res_same_daytype = float(prior_daytype_rows.sort_values("datetime")["residual"].iloc[-1])
 
             rows.append({
                 "station_code": code,
@@ -317,7 +402,7 @@ class MetroFeatureBuilder:
                 "res_trend": res_trend,
                 "pax_trend": pax_trend,
                 "pax_ratio_base_T": pax_ratio_base_T,
-                "res_same_daytype_last": 0.0,
+                "res_same_daytype_last": res_same_daytype,
                 "south_hub_res_T": south_hub_T,
                 "north_hub_res_T": north_hub_T,
                 "center_hub_res_T": center_hub_T,

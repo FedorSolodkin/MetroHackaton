@@ -44,26 +44,18 @@ def run_feature_ablation(
     - monthly_df: детализация по месяцам
     - importance_df: важность признаков полной модели (gain)
     """
-    base_model = MetroBaselineModel()
-    base_model.fit(df_station)
-    builder = MetroFeatureBuilder(baseline_model=base_model)
-
-    print(f"Построение обучающей выборки для горизонта {horizon_min} мин...")
-    dataset, all_feature_cols = builder.build_training_dataset_for_horizon(df_station, horizon_min=horizon_min)
-
     # Загрузка и объединение погодных факторов для группы G6
     if weather_path is None:
         weather_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "weather_spb_2026.parquet")
     
     weather_cols = ["temperature", "precipitation", "rain", "wind_speed", "is_rain", "is_heavy_rain"]
     has_weather = False
+    wx_df = None
     if os.path.exists(weather_path):
         wx_df = pd.read_parquet(weather_path)
         available_wx = [c for c in weather_cols if c in wx_df.columns]
-        dataset = dataset.merge(wx_df[["datetime"] + available_wx], left_on="target_datetime", right_on="datetime", how="left")
-        dataset[available_wx] = dataset[available_wx].ffill().bfill().fillna(0.0)
-        has_weather = True
         weather_cols = available_wx
+        has_weather = True
 
     # Определение наборов признаков
     cal_features = [
@@ -97,6 +89,31 @@ def run_feature_ablation(
     months = (2, 5, 7, 9)
     month_names = {2: "Фев", 5: "Май", 7: "Июл", 9: "Сен"}
     
+    print(f"Построение 4-фолдовых выборок (Zero Leakage) для горизонта {horizon_min} мин...")
+    df_clean = df_station.copy()
+    df_clean["month"] = pd.to_datetime(df_clean["datetime"]).dt.month
+
+    fold_data = {}
+    for m in months:
+        tr_raw = df_clean[df_clean["month"] != m].copy()
+        te_raw = df_clean[df_clean["month"] == m].copy()
+
+        # Строго Zero Leakage: базовый профиль обучается только на 3 тренировочных месяцах!
+        fold_base = MetroBaselineModel()
+        fold_base.fit(tr_raw)
+        fold_fb = MetroFeatureBuilder(baseline_model=fold_base)
+
+        tr_ds, _ = fold_fb.build_training_dataset_for_horizon(tr_raw, horizon_min=horizon_min)
+        te_ds, _ = fold_fb.build_training_dataset_for_horizon(te_raw, horizon_min=horizon_min)
+
+        if has_weather and wx_df is not None:
+            tr_ds = tr_ds.merge(wx_df[["datetime"] + weather_cols], left_on="target_datetime", right_on="datetime", how="left")
+            tr_ds[weather_cols] = tr_ds[weather_cols].ffill().bfill().fillna(0.0)
+            te_ds = te_ds.merge(wx_df[["datetime"] + weather_cols], left_on="target_datetime", right_on="datetime", how="left")
+            te_ds[weather_cols] = te_ds[weather_cols].ffill().bfill().fillna(0.0)
+
+        fold_data[m] = {"train": tr_ds, "val": te_ds}
+
     group_results = []
     monthly_records = []
     final_booster = None
@@ -108,7 +125,7 @@ def run_feature_ablation(
     base_month_tails = {}
 
     for m in months:
-        val_sub = dataset[dataset["month"] == m]
+        val_sub = fold_data[m]["val"]
         y_true = val_sub["target_pax"].values
         y_base = val_sub["base_pax_target"].values
         
@@ -148,8 +165,8 @@ def run_feature_ablation(
     direct_tails = {}
 
     for m in months:
-        tr = dataset[dataset["month"] != m]
-        te = dataset[dataset["month"] == m]
+        tr = fold_data[m]["train"]
+        te = fold_data[m]["val"]
         y_true = te["target_pax"].values
         y_base = te["base_pax_target"].values
 
@@ -193,8 +210,8 @@ def run_feature_ablation(
         g_tails = {}
 
         for m in months:
-            tr = dataset[dataset["month"] != m]
-            te = dataset[dataset["month"] == m]
+            tr = fold_data[m]["train"]
+            te = fold_data[m]["val"]
             y_true = te["target_pax"].values
             y_base = te["base_pax_target"].values
 

@@ -154,15 +154,24 @@ class MetroFlowPredictor:
                 0.0
             )
 
-            # Логика детекции аномалии:
-            # - Z-score превышает статистический порог (z >= 2.0)
-            # - Превышение базы на 15% при абсолютном росте > 100 чел
-            # - P90 превышает критическую пропускную способность платформы
+            # Логика детекции аномалии (согласовано с регламентами ЦУП и WORK_PLAN.md §3.2 D3):
+            # 1. Значительное статистическое отклонение от нормы (Z >= 2.0)
+            # 2. Существенный относительный рост (+15%) при абсолютном приросте > 100 чел И умеренно повышенном Z >= 1.5
+            # 3. Риск перегруза платформы: P90 превышает емкость станции (не менее 125% нормы или лимита состава)
+            capacity_limit = (
+                np.maximum(base_pax_arr * 1.25, self.platform_capacity)
+                if self.platform_capacity is not None
+                else base_pax_arr * 1.25
+            )
             is_anomaly_arr = (
                 is_target_operating & (
                     (anomaly_score_arr >= self.z_threshold) |
-                    ((p50_arr > (base_pax_arr * (1.0 + self.pct_threshold))) & ((p50_arr - base_pax_arr) >= self.abs_threshold)) |
-                    (p90_arr >= self.platform_capacity)
+                    (
+                        (p50_arr > (base_pax_arr * (1.0 + self.pct_threshold))) & 
+                        ((p50_arr - base_pax_arr) >= self.abs_threshold) & 
+                        (anomaly_score_arr >= 1.5)
+                    ) |
+                    ((p90_arr >= capacity_limit) & (anomaly_score_arr >= 1.5))
                 )
             )
 
@@ -177,7 +186,14 @@ class MetroFlowPredictor:
                 "pred_p90": np.round(p90_arr, 1),
                 "pred_p10": np.round(p10_arr, 1),
                 "is_anomaly": is_anomaly_arr.astype(bool),
-                "anomaly_score": np.round(anomaly_score_arr, 2)
+                "anomaly_score": np.round(anomaly_score_arr, 2),
+                # Псевдонимы для совместимости с контрактами WORK_PLAN.md §4
+                "base": np.round(base_pax_arr, 1),
+                "p50": np.round(p50_arr, 1),
+                "p90": np.round(p90_arr, 1),
+                "p10": np.round(p10_arr, 1),
+                "ts": target_dt,
+                "station": inf_features["station_code"].astype(int)
             })
             forecast_frames.append(h_df)
 
@@ -186,6 +202,30 @@ class MetroFlowPredictor:
         ).reset_index(drop=True)
 
         return result_df
+
+    @staticmethod
+    def to_dispatch_records(forecast_df: pd.DataFrame) -> List[Dict[str, Any]]:
+        """
+        Конвертирует результат прогноза в формат JSON-контракта между модулями (WORK_PLAN.md §4):
+        [{ts, station, station_name, horizon_min, p10, p50, p90, base, is_anomaly, anomaly_score}]
+        """
+        records = []
+        for _, row in forecast_df.iterrows():
+            ts_val = row["target_datetime"]
+            ts_str = ts_val.isoformat() if hasattr(ts_val, "isoformat") else str(ts_val)
+            records.append({
+                "ts": ts_str,
+                "station": int(row["station_code"]),
+                "station_name": str(row["station_name"]),
+                "horizon_min": int(row["horizon_min"]),
+                "base": float(row["base_pax"]),
+                "p10": float(row["pred_p10"]),
+                "p50": float(row["pred_p50"]),
+                "p90": float(row["pred_p90"]),
+                "is_anomaly": bool(row["is_anomaly"]),
+                "anomaly_score": float(row["anomaly_score"])
+            })
+        return records
 
 
 if __name__ == "__main__":
