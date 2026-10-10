@@ -25,7 +25,9 @@ FEATS = ["st", "slot", "dow", "cls", "off", "pre", "off_next", "off_prev", "lag2
 
 # --- параметры линии и решений (источники: данные организаторов, слова эксперта; допущения помечены) -------------
 CAP_TRAIN = 960            # комфортная вместимость состава: 120 чел/вагон (эксперт; нужно подтвердить)
-MIN_INTERVAL_S = 113; LOOP_MIN = 99; HOP_MIN = 2.6; READY_MIN = 5; TO_AVTOVO_MIN = 7
+MIN_INTERVAL_S = 113; MAX_TRAINS = 53   # минимальный интервал 1:53 — это 53 состава на линии (данные метро)
+LOOP_S = MIN_INTERVAL_S * MAX_TRAINS     # полный оборот состава: 5989 с ≈ 99,8 мин (≈ 2 × 18 перегонов × 2,6 мин + развороты на конечных); интервал = оборот / число составов
+LOOP_MIN = LOOP_S / 60; HOP_MIN = 2.6; READY_MIN = 5; TO_AVTOVO_MIN = 7
 U_HI, U_TARGET, DEV_UP, DEV_DOWN, U_LOW = 0.88, 0.85, 0.08, -0.25, 0.50
 THRESHOLD_PCT = 20          # порог аномалии на станциях в интерфейсе
 MEAN_TRIP_STOPS = 6.0       # средняя поездка 6 перегонов (коэффициент сменяемости 3)
@@ -179,6 +181,16 @@ class World:
         W = self.W[phase]; F = e[:, None] * W / W.sum(1, keepdims=True)
         south = np.array([F[k + 1:, :k + 1].sum() for k in range(NS - 1)]); north = np.array([F[:k + 1, k + 1:].sum() for k in range(NS - 1)])
         return south * getattr(self, "scale", 1.0), north * getattr(self, "scale", 1.0)
+
+
+def trains_for_interval(sec: float) -> int:
+    """сколько составов должно быть на линии, чтобы интервал был не больше sec"""
+    return int(-(-LOOP_S // sec))
+
+
+def interval_for_trains(n: float) -> float:
+    """интервал (с) при n составах на линии"""
+    return LOOP_S / n
 
 
 def fmt_interval(sec: float) -> str:

@@ -33,6 +33,7 @@ svg text{font-family:inherit}
 .action{border-width:2px}
 .action.up{border-color:var(--red);background:linear-gradient(180deg,rgba(255,90,79,.10),var(--panel) 60%)}
 .action.down{border-color:var(--blu);background:linear-gradient(180deg,rgba(90,169,255,.09),var(--panel) 60%)}
+.action.pend{border-color:var(--amb);background:linear-gradient(180deg,rgba(245,185,66,.10),var(--panel) 60%)}.pend .kicker{color:var(--amb)}.pend .big2 b{color:var(--amb)}
 .action.ok{border-color:rgba(52,211,153,.5);background:linear-gradient(180deg,rgba(52,211,153,.07),var(--panel) 60%)}
 .kicker{font-size:12.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase}
 .up .kicker{color:var(--red)}.down .kicker{color:var(--blu)}.ok .kicker{color:var(--grn)}
@@ -53,6 +54,17 @@ svg text{font-family:inherit}
 @keyframes pulse{0%{r:9;opacity:.8}100%{r:22;opacity:0}}
 .pulse{animation:pulse 1.6s ease-out infinite}
 .hidden{display:none}
+.big2{display:flex;align-items:baseline;gap:14px;margin:6px 0 0}.big2 b{font-size:64px;line-height:1;font-weight:700;letter-spacing:-2px;font-variant-numeric:tabular-nums}.big2 span{font-size:17px;font-weight:600}
+.up .big2 b{color:var(--red)}.down .big2 b{color:var(--blu)}
+.ivl{font-size:22px;font-weight:700;margin:2px 0 4px;font-variant-numeric:tabular-nums}.ivl i{font-style:normal;color:var(--mut);font-weight:500;font-size:15px;margin-left:8px}
+.cur{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--panel2);border-radius:14px;padding:8px 12px;margin-top:10px;font-size:13.5px}
+.cur input{width:74px;background:#0b0e13;border:1px solid var(--line);border-radius:8px;color:var(--tx);padding:5px 8px;font:inherit;font-variant-numeric:tabular-nums}
+.cur button,.btn2{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:5px 11px;cursor:pointer;color:var(--tx);font:inherit;font-size:13px}
+.cur button:hover,.btn2:hover{border-color:#3a475b}
+.acceptbtn{margin-top:12px;width:100%;background:var(--red);border:0;border-radius:14px;padding:13px 16px;font:inherit;font-size:16px;font-weight:700;color:#fff;cursor:pointer;letter-spacing:.2px}
+.acceptbtn:hover{filter:brightness(1.1)}
+.acc{margin-top:12px;border:1px solid rgba(52,211,153,.5);background:rgba(52,211,153,.08);border-radius:14px;padding:10px 14px;font-size:13.5px}.acc div{padding:2px 0}.acc b{color:var(--grn)}
+.acc .btn2{margin-top:8px}
 </style>
 </head>
 <body>
@@ -64,25 +76,25 @@ svg text{font-family:inherit}
   <label>Эмулятор</label>
   <select id="scn" title="Сценарий"></select>
   <button id="bBack" title="на 15 минут назад">⏮</button><button id="bPlay" title="пуск / пауза">▶ Пуск</button><button id="bFwd" title="на 15 минут вперёд">⏭</button>
-  <select id="rate" title="Скорость"><option value="0.25">медленно</option><option value="0.5" selected>1×</option><option value="1">2×</option><option value="2">4×</option></select>
-  <input type="range" id="tm" min="345" max="1380" step="15" title="Время суток">
+  <select id="rate" title="Скорость: минут эмулятора в секунду"><option value="1">1 мин/с</option><option value="2" selected>2 мин/с</option><option value="5">5 мин/с</option><option value="15">15 мин/с</option></select>
+  <input type="range" id="tm" min="345" max="1380" step="1" title="Время суток">
   <select id="day" title="Любой рабочий день"></select>
+  <button id="bReset" title="Вернуть сценарий к началу">↺ Сначала</button>
   <span class="sp"></span>
-  <button id="bEvent" title="Добавить событие: +60% у центра на 2 часа">+ Событие у центра</button>
-  <button id="bFail" title="Добавить сбой: +40% по всей линии на 90 минут">+ Сбой на других линиях</button>
-  <button id="bClear">Сбросить вбросы</button>
   <span class="tag hidden" id="injTag"></span>
   <button id="bHide" title="Скрыть панель эмулятора">✕</button>
 </div>
 <main>
   <section class="card" id="mapCard">
     <h2>Загрузка перегонов по направлениям</h2>
-    <div class="sub">прогноз на ближайший час, доля комфортной вместимости поездов по плану (120 чел/вагон)</div>
+    <div class="sub">цвет перегона — прогноз на ближайший час, доля комфортной вместимости (120 чел/вагон); точки — поезда сейчас, цвет — их загрузка по данным с поездов (симуляция)</div>
     <div class="legend"><span><i style="background:hsl(150 75% 52%)"></i>до 60%</span><span><i style="background:hsl(95 75% 52%)"></i>60–80%</span><span><i style="background:hsl(38 85% 56%)"></i>80–90%</span><span><i style="background:hsl(0 80% 60%)"></i>выше 90%</span><span style="margin-left:auto">числа у перегонов: % загрузки</span></div>
     <svg id="map" width="100%" viewBox="0 0 560 850" role="img" aria-label="Схема линии 1"></svg>
+    <div id="trainsBox" class="more"></div>
   </section>
   <div class="grid2">
     <section class="card action ok" id="act"></section>
+    <section class="card"><h2>Загрузка самого нагруженного перегона</h2><div class="sub" id="utilSub">% комфортной вместимости (120 чел/вагон), час вокруг каждого момента: факт до «сейчас», прогноз после. Рекомендация — при прогнозе ≥88% и входе ≥ +8% к норме: плановые пики закрывает график.</div><svg id="uchart" width="100%" viewBox="0 0 640 210"></svg></section>
     <section class="card"><h2>Вход пассажиров по всей линии</h2><div class="sub">за 15 минут, тыс. человек: факт, прогноз модели и норма для этого времени</div><svg id="chart" width="100%" viewBox="0 0 640 220"></svg></section>
     <section class="card" id="stCard"></section>
   </div>
@@ -98,8 +110,14 @@ let D=null,sel=null,emu=null,busy=false;
 
 /* ---------- запросы ---------- */
 async function api(path,body){const r=await fetch(path,body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:undefined);return r.json()}
-async function poll(){if(busy)return;try{D=await api("/api/state");render()}catch(e){console.warn(e)}}
-async function ctl(body){busy=true;try{emu=await api("/api/emulator",body);syncEmu();D=await api("/api/state");render()}finally{busy=false}}
+let lastJ="";
+async function poll(){if(busy)return;try{const d=await api("/api/state"),j=JSON.stringify(d);if(j===lastJ)return;lastJ=j;D=d;render()}catch(e){console.warn(e)}}
+async function post2(path,body){busy=true;try{await api(path,body);lastJ="";D=await api("/api/state");lastJ=JSON.stringify(D);render()}finally{busy=false}}
+window.acceptRec=k=>post2("/api/accept",{keys:k.split(",")});
+window.cancelAcc=()=>post2("/api/accept",{cancel:true});
+window.setInt=()=>{const v=parseInt($("curInt").value,10);post2("/api/interval",{seconds:isNaN(v)?null:v})};
+window.resetInt=()=>post2("/api/interval",{seconds:null});
+async function ctl(body){busy=true;try{emu=await api("/api/emulator",body);syncEmu();D=await api("/api/state");lastJ=JSON.stringify(D);render()}finally{busy=false}}
 
 /* ---------- эмулятор ---------- */
 function syncEmu(){
@@ -108,7 +126,7 @@ function syncEmu(){
   const [h,m]=emu.time.split(":").map(Number);$("tm").value=h*60+m;
   if(!$("scn").dataset.ok){$("scn").innerHTML=emu.scenarios.map(s=>`<option value="${s.id}">${esc(s.title)}</option>`).join("")+'<option value="custom" hidden>своя настройка</option>';$("day").innerHTML=emu.days.map(d=>`<option value="${d.day}">${d.label}</option>`).join("");$("scn").dataset.ok=1}
   $("scn").value=emu.scenario;$("day").value=emu.day;$("rate").value=String(emu.rate);
-  const t=$("injTag");t.classList.toggle("hidden",!emu.inj.length);t.textContent=emu.inj.length?`вбросов: ${emu.inj.length}`:""
+  const t=$("injTag");t.classList.toggle("hidden",!emu.inj.length);t.textContent=emu.inj.length?"модельный всплеск в данных дня":""
 }
 $("scn").onchange=e=>ctl({scenario:e.target.value});
 $("day").onchange=e=>ctl({day:e.target.value,time:"06:45"});
@@ -118,9 +136,7 @@ $("bBack").onclick=()=>ctl({step:-1,playing:false});$("bFwd").onclick=()=>ctl({s
 $("tm").onchange=e=>{const v=+e.target.value;ctl({time:String(Math.floor(v/60)).padStart(2,"0")+":"+String(v%60).padStart(2,"0")})};
 const nowMin=()=>{const [h,m]=(emu?emu.time:"07:00").split(":").map(Number);return h*60+m};
 const hm=v=>String(Math.floor(v/60)%24).padStart(2,"0")+":"+String(v%60).padStart(2,"0");
-$("bEvent").onclick=()=>{const a=Math.ceil((nowMin()+30)/15)*15;ctl({inject:{stations:["Площадь Восстания","Площадь Ленина","Чернышевская","Владимирская"],start:hm(a),end:hm(a+120),pct:60}})};
-$("bFail").onclick=()=>{const a=Math.ceil((nowMin()+15)/15)*15;ctl({inject:{stations:emu.stations,start:hm(a),end:hm(a+90),pct:40}})};
-$("bClear").onclick=()=>ctl({clear_inject:true});
+$("bReset").onclick=()=>ctl({scenario:emu&&emu.scenario!=="custom"?emu.scenario:"event"});
 $("bHide").onclick=()=>{$("emu").classList.add("hidden")};
 document.addEventListener("keydown",e=>{if(e.key==="e"||e.key==="E")$("emu").classList.toggle("hidden")});
 
@@ -131,9 +147,9 @@ const dirName=id=>(D.directions.find(d=>d.id===id)||{}).name||id;
 function render(){
   if(!D)return;
   const th=D.threshold,mt=D.meta;
-  $("clock").textContent=mt.time;$("date").textContent=new Date(mt.day).toLocaleDateString("ru",{day:"numeric",month:"long"})+", "+mt.dow+" · проигрывание реальных данных";
+  $("clock").textContent=mt.time;$("date").textContent=new Date(mt.day).toLocaleDateString("ru",{day:"numeric",month:"long"})+", "+mt.dow+" · реальные данные дня, поминутный поток (модель)";
   const ss=D.stations;if(!sel||!ss.find(s=>s.id===sel)){const m=[...ss].sort((a,b)=>Math.abs(stDev(b))-Math.abs(stDev(a)))[0];sel=Math.abs(stDev(m))>=th?m.id:(ss.find(s=>s.name==="Площадь Восстания")||ss[0]).id}
-  renderMap();renderAction();renderChart();renderStation();
+  renderMap();renderAction();renderUtil();renderChart();renderStation();
 }
 
 /* ---------- карта ---------- */
@@ -144,14 +160,15 @@ function renderMap(){
   let o=`<defs><filter id="gl"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
   o+=`<text x="${xv+4}" y="60" text-anchor="end" fill="#8592a5" font-size="11.5">к Ветеранов ↓</text><text x="${xn-4}" y="60" fill="#8592a5" font-size="11.5">↑ к Девяткино</text>`;
   // зоны рекомендаций
-  D.recommendations.filter(r=>r.action!=="keep").forEach(r=>{const a=row[r.from],b=row[r.to];if(a==null||b==null)return;const y1=Y(Math.min(a,b))-12,y2=Y(Math.max(a,b))+12,up=r.action==="up",c=up?"#ff5a4f":"#5aa9ff";
+  D.recommendations.filter(r=>r.action!=="keep").forEach(r=>{const a=row[r.from],b=row[r.to];if(a==null||b==null)return;const y1=Y(Math.min(a,b))-12,y2=Y(Math.max(a,b))+12,up=r.action==="up"||r.action==="limit"||r.action==="noreserve",c=r.action==="pending"?"#f5b942":up?"#ff5a4f":"#5aa9ff";
     o+=`<rect x="170" y="${y1}" width="112" height="${y2-y1}" rx="16" fill="${c}" fill-opacity=".09" stroke="${c}" stroke-opacity=".7" stroke-dasharray="5 5"/>`;
-    o+=`<text x="164" y="${(y1+y2)/2+4}" text-anchor="end" fill="${c}" font-size="14" font-weight="700">${r.action==="limit"?"предел":(up?"+":"−")+Math.abs(r.trains_delta)}</text>`});
+    o+=`<text x="164" y="${(y1+y2)/2+4}" text-anchor="end" fill="${c}" font-size="14" font-weight="700">${r.action==="limit"?"предел":r.action==="noreserve"?"резерв":r.action==="pending"?"в пути":(r.delta_s<0?"−":"+")+Math.abs(r.delta_s)+" с"}</text>`});
   // перегоны
+  const lab=(a)=>{const u=a?.u??0,b=a?.ub??u;return Math.abs(b-u)>=0.02?`<tspan fill="#5c6a7d" text-decoration="line-through">${Math.round(b*100)}</tspan> ${Math.round(u*100)}`:`${Math.round(u*100)}`};
   for(let i=0;i<n-1;i++){const k=n-2-i,uv=segV[k]?.u??0,un=segN[k]?.u??0,ya=Y(i),yb=Y(i+1);
     o+=`<line x1="${xv}" y1="${ya}" x2="${xv}" y2="${yb}" stroke="${ucolor(uv)}" stroke-width="9" stroke-linecap="round" ${uv>.9?'filter="url(#gl)"':""}/>`;
     o+=`<line x1="${xn}" y1="${ya}" x2="${xn}" y2="${yb}" stroke="${ucolor(un)}" stroke-width="9" stroke-linecap="round" ${un>.9?'filter="url(#gl)"':""}/>`;
-    const my=(ya+yb)/2;o+=`<text x="${xv-14}" y="${my+4}" text-anchor="end" fill="${uv>.8?ucolor(uv):"#5c6a7d"}" font-size="10.5">${Math.round(uv*100)}</text><text x="${xn+14}" y="${my+4}" fill="${un>.8?ucolor(un):"#5c6a7d"}" font-size="10.5">${Math.round(un*100)}</text>`}
+    const my=(ya+yb)/2;o+=`<text x="${xv-14}" y="${my+4}" text-anchor="end" fill="${uv>.8?ucolor(uv):"#5c6a7d"}" font-size="10.5">${lab(segV[k])}</text><text x="${xn+14}" y="${my+4}" fill="${un>.8?ucolor(un):"#5c6a7d"}" font-size="10.5">${lab(segN[k])}</text>`}
   // станции
   ss.forEach((s,i)=>{const d=stDev(s),a=Math.abs(d)>=D.threshold,y=Y(i),c=a?(d>0?"#ff5a4f":"#5aa9ff"):"#3a475b",on=s.id===sel;
     o+=`<g class="st" data-s="${esc(s.id)}"><rect class="row" x="0" y="${y-18}" width="560" height="36" rx="10" fill="${on?"#1a212c":"transparent"}"/>`;
@@ -161,6 +178,9 @@ function renderMap(){
     o+=`<text x="296" y="${y+5}" fill="${on||a?"#e8edf4":"#aab5c5"}" font-size="14.5" font-weight="${a||on?600:400}">${esc(s.name)}</text>`;
     o+=a?`<g><rect x="478" y="${y-11}" width="64" height="22" rx="11" fill="${c}" fill-opacity=".18"/><text x="510" y="${y+4.5}" text-anchor="middle" fill="${c}" font-size="13" font-weight="700">${sign(d)}%</text></g>`:`<text x="542" y="${y+4.5}" text-anchor="end" fill="#5c6a7d" font-size="12">норма</text>`;
     o+=`</g>`});
+  // поезда (симуляция данных с поездов)
+  (D.trains||[]).forEach(t=>{const yy=Y((n-1)-t.pos),xx=t.direction==="to_veteranov"?xv:xn;
+    o+=`<circle cx="${xx}" cy="${yy}" r="8" fill="${ucolor(t.u)}" stroke="#0b0e13" stroke-width="2.5"><title>${esc(t.id)} · ${fmt(t.load)} чел. (${Math.round(t.u*100)}%)</title></circle>`});
   // депо
   const dep=(id,name,i,side)=>{const act=(D.depots.find(x=>x.id===id)||{actions:[]}).actions,rel=act.filter(a=>a.type==="release"),y=Y(i),act0=rel[0];
     const c=act0?"#ff5a4f":"#5c6a7d",x=14,w=118,yy=side==="top"?10:y-17;
@@ -169,30 +189,73 @@ function renderMap(){
     o+=`<rect x="${x}" y="${yy}" width="${w}" height="34" rx="10" fill="#131821" stroke="${c}" stroke-width="${act0?2:1.5}"/><text x="${x+10}" y="${yy+15}" fill="#e8edf4" font-size="12" font-weight="600">${name}</text>`;
     o+=`<text x="${x+10}" y="${yy+28}" fill="${c}" font-size="11.5" font-weight="${act0?700:400}">${act0?`выпустить ${act0.count} · ${act0.time}`:"резерв 2 состава"}</text>`;
     if(act0)o+=`<circle class="pulse" cx="${x+w}" cy="${side==="top"?y-22:y}" r="9" fill="none" stroke="#ff5a4f" stroke-width="2"/>`};
-  dep("devyatkino","Депо у Девяткино",0,"top");dep("avtovo","Депо у Автово",row["Автово"],"side");
+  dep("devyatkino","Депо «Северное»",0,"top");dep("avtovo","Депо «Автово»",row["Автово"],"side");
   $("map").innerHTML=o;
+  const T=D.trains||[];if(T.length){const nv=T.filter(t=>t.direction==="to_veteranov").length,nn=T.length-nv,top=[...T].sort((a,b)=>b.load-a.load).slice(0,3);
+    $("trainsBox").innerHTML=`<div><b>Поезда на линии сейчас:</b> к Ветеранов ${nv}, к Девяткино ${nn}${D.line_trains>T.length?`, ещё ${D.line_trains-T.length} на разворотах на конечных${(D.applied||[]).length?" и в пути из депо":""} · всего ≈${D.line_trains}`:""} · данные с поездов на каждой станции (симуляция)</div>`+top.map(t=>`<div>${esc(t.id)} · ${esc(dirName(t.direction))} · у станции ${esc(t.near)} · <b style="color:${ucolor(t.u)}">${fmt(t.load)} чел. (${Math.round(t.u*100)}%)</b></div>`).join("")}else $("trainsBox").innerHTML="";
   $("map").querySelectorAll(".st").forEach(g=>g.onclick=()=>{sel=g.dataset.s;renderMap();renderStation()});
 }
 
 /* ---------- главное действие ---------- */
+const trWord=n=>plural(n,["состав","состава","составов"]);
+const dsec=n=>(n<0?"−":"+")+Math.abs(n)+" с";
+function curCtl(dirId){const iv=(D.intervals||{})[dirId]||(D.intervals||{}).to_veteranov||{};
+  return `<div class="cur"><span>Текущий интервал</span><input id="curInt" type="number" min="113" max="600" step="5" value="${iv.now_s??""}" onkeydown="if(event.key==='Enter')setInt()"><span>с</span><button onclick="setInt()">Задать</button>${iv.manual?`<button onclick="resetInt()">по графику (${iv.plan_s} с)</button><span class="muted">задан вручную</span>`:`<span class="muted">по графику</span>`}</div>`}
+function accBlock(){const ap=D.applied||[];if(!ap.length)return"";
+  return `<div class="acc">${ap.map(a=>`<div><b>✓ Принято:</b> ${a.action==="up"?"+":"−"}${Math.abs(a.trains)} ${trWord(Math.abs(a.trains))}${a.depot?" из "+esc(a.depot).replace("Депо ","депо "):""}, интервал ${a.interval_before_s} → <b>${a.interval_after_s} с</b> · ${esc(dirName(a.target||a.direction))} · на линии с ${esc(a.from)}</div>`).join("")}<div class="muted">Горячий резерв: осталось ${D.reserve_left??"?"} из 4 · свободных в депо: ${D.cold_left??"?"} (≈30 мин на вывод)</div><button class="btn2" onclick="cancelAcc()">Отменить принятое</button></div>`}
 function renderAction(){
+  if(document.activeElement&&document.activeElement.id==="curInt")return;
   const R=D.recommendations,ups=R.filter(r=>r.action==="up").sort((a,b)=>b.trains_delta-a.trains_delta),dws=R.filter(r=>r.action==="down"),el=$("act");
   const rel=D.depots.flatMap(d=>d.actions.filter(a=>a.type==="release").map(a=>({...a,depot:d.name})));
-  const maxU=Math.max(...[...D.segments.to_veteranov,...D.segments.to_devyatkino].map(s=>s.u)),dl=D.meta.line_dev_pct;
-  const chips=`<div class="chips"><div class="chip">Максимальная загрузка перегона<b style="color:${ucolor(maxU)}">${Math.round(maxU*100)}%</b></div><div class="chip">Вход по линии к норме<b>${dl>0?"+":dl<0?"−":""}${Math.abs(dl)}%</b></div></div>`;
-  if(ups.length){const r=ups[0],cmd=rel.filter(a=>a.direction===r.direction);
+  const segs=[...D.segments.to_veteranov,...D.segments.to_devyatkino],maxU=Math.max(...segs.map(s=>s.u)),maxB=Math.max(...segs.map(s=>s.ub??s.u)),dl=D.meta.line_dev_pct,ap=D.applied||[];
+  const chips=`<div class="chips"><div class="chip">Максимальная загрузка перегона<b style="color:${ucolor(maxU)}">${Math.round(maxU*100)}%</b>${ap.length&&maxB-maxU>=0.02?`<span class="muted"> (без принятого ${Math.round(maxB*100)}%)</span>`:""}</div><div class="chip">Вход по линии к норме<b>${dl>0?"+":dl<0?"−":""}${Math.abs(dl)}%</b></div></div>`;
+  const rest=(list)=>list.length?`<div class="more">${list.map(x=>`<div>${x.action==="up"?"ещё ":"можно "}${dsec(x.delta_s)} (${x.trains_delta>0?"+":"−"}${Math.abs(x.trains_delta)} ${trWord(Math.abs(x.trains_delta))}) · ${esc(dirName(x.direction))} · ${esc(x.from)} → ${esc(x.to)} · ${esc(x.period)}</div>`).join("")}</div>`:"";
+  if(ups.length){const r=ups[0],cmd=rel.filter(a=>a.key===r.key);
     el.className="card action up";
-    el.innerHTML=`<div class="kicker">Рекомендация диспетчеру</div><div class="bigline"><b>+${r.trains_delta}</b><span>${plural(r.trains_delta,["поезд","поезда","поездов"])} на линию</span></div>
-      <div class="route">${esc(dirName(r.direction))} · ${esc(r.from)} → ${esc(r.to)}</div><div class="muted">${esc(r.period)} · интервал ${esc(r.interval_now)} → <b style="color:var(--tx)">${esc(r.interval_new)}</b></div>
-      ${cmd.map(a=>`<div class="cmd"><b>${esc(a.time)}</b><div>Выпустить ${a.count} ${plural(a.count,["состав","состава","составов"])} (${esc(a.depot)})<small class="muted" style="display:block">${esc(a.note)}</small></div></div>`).join("")}
-      <div class="why">${esc(r.reason)}</div>
-      ${ups.length>1||dws.length?`<div class="more">${[...ups.slice(1),...dws].map(x=>`<div>${x.action==="up"?"+":"−"}${Math.abs(x.trains_delta)} · ${esc(dirName(x.direction))} · ${esc(x.from)} → ${esc(x.to)} · ${esc(x.period)}</div>`).join("")}</div>`:""}${chips}`;
-  }else if(R.some(r=>r.action==="limit")){const r=R.find(r=>r.action==="limit");el.className="card action up";
-    el.innerHTML=`<div class="kicker">Интервал на пределе</div><div class="bigline"><b>${esc(r.interval_now)}</b><span>добавлять поезда нельзя</span></div><div class="route">${esc(dirName(r.direction))} · ${esc(r.from)} → ${esc(r.to)}</div><div class="muted">${esc(r.period)}</div><div class="why">${esc(r.reason)}</div>${chips}`;
+    el.innerHTML=`<div class="kicker">Рекомендация диспетчеру · изменить интервал</div><div class="big2"><b>${dsec(r.delta_s)}</b><span>к интервалу движения</span></div>
+      <div class="ivl">${r.interval_now_s} с → ${r.interval_new_s} с<i>на линии ≈${r.trains_now} → нужно ${r.trains_need} (+${r.trains_delta}; максимум ${r.trains_max} при 113 с)</i></div>
+      <div class="route">${esc(dirName(r.direction))} · ${esc(r.from)} → ${esc(r.to)}</div><div class="muted">с ${esc(r.start)} до ${esc(r.end)}</div>
+      ${cmd.map(a=>`<div class="cmd"><b>${esc(a.time)}</b><div>Выпустить ${a.count} ${trWord(a.count)} (${esc(a.depot)}${a.cold?", из стоящих в депо":""})<small class="muted" style="display:block">${esc(a.note)}</small></div></div>`).join("")}
+      ${curCtl(r.direction)}
+      <button class="acceptbtn" onclick="acceptRec('${[...ups,...dws].map(x=>esc(x.key)).join(",")}')">${ups.length+dws.length>1?`Принять все рекомендации (${ups.length+dws.length})`:"Принять рекомендацию"}</button>
+      <div class="why">${esc(r.reason)}</div>${rest([...ups.slice(1),...dws])}${accBlock()}${chips}`;
+  }else if(R.some(r=>r.action==="limit"||r.action==="noreserve")){const r=R.find(r=>r.action==="limit"||r.action==="noreserve"),nr=r.action==="noreserve";el.className="card action up";
+    el.innerHTML=`<div class="kicker">${nr?"Резерв исчерпан":"Интервал на пределе"}</div><div class="big2"><b>${r.interval_now_s} с</b><span>${nr?"свободных составов нет":"сокращать нельзя"}</span></div><div class="route">${esc(dirName(r.direction))} · ${esc(r.from)} → ${esc(r.to)}</div><div class="muted">${esc(r.period)}</div><div class="why">${esc(r.reason)}</div>${curCtl(r.direction)}${accBlock()}${chips}`;
+  }else if(R.some(r=>r.action==="pending")){const r=R.find(r=>r.action==="pending");el.className="card action pend";
+    el.innerHTML=`<div class="kicker">Принято · составы в пути</div><div class="big2"><b>≈${Math.round(r.u_full*100)}%</b><span>загрузка после прибытия (сейчас прогноз ${Math.round(r.u_now*100)}%)</span></div>
+      <div class="ivl">${r.interval_now_s} с → ${r.interval_new_s} с<i>последние составы на участке к ${esc(r.eta)}</i></div><div class="route">${esc(dirName(r.direction))} · ${esc(r.from)} → ${esc(r.to)}</div>
+      <div class="why">${esc(r.reason)}</div>${curCtl(r.direction)}${accBlock()}${chips}`;
   }else if(dws.length){const r=dws[0];el.className="card action down";
-    el.innerHTML=`<div class="kicker">Можно снять</div><div class="bigline"><b>−${Math.abs(r.trains_delta)}</b><span>${plural(r.trains_delta,["поезд","поезда","поездов"])} с линии</span></div><div class="route">${esc(dirName(r.direction))} · ${esc(r.from)} → ${esc(r.to)}</div><div class="muted">${esc(r.period)} · интервал ${esc(r.interval_now)} → ${esc(r.interval_new)}</div><div class="why">${esc(r.reason)}</div>${chips}`;
+    el.innerHTML=`<div class="kicker">Можно удлинить интервал</div><div class="big2"><b>${dsec(r.delta_s)}</b><span>к интервалу движения</span></div><div class="ivl">${r.interval_now_s} с → ${r.interval_new_s} с<i>−1 состав</i></div><div class="route">${esc(dirName(r.direction))} · ${esc(r.from)} → ${esc(r.to)}</div><div class="muted">с ${esc(r.start)} до ${esc(r.end)}</div>${curCtl(r.direction)}<button class="acceptbtn" style="background:var(--blu)" onclick="acceptRec('${esc(r.key)}')">Принять рекомендацию</button><div class="why">${esc(r.reason)}</div>${accBlock()}${chips}`;
+  }else if(R.some(r=>r.action==="return")){const r=R.find(r=>r.action==="return");el.className="card action down";
+    el.innerHTML=`<div class="kicker">Можно вернуть резерв в депо</div><div class="big2"><b>${dsec(r.delta_s)}</b><span>к интервалу движения</span></div><div class="ivl">${r.interval_now_s} с → ${r.interval_new_s} с<i>на линии ≈${r.trains_now} → ${r.trains_need} (−${Math.abs(r.trains_delta)})</i></div><div class="muted">${esc(r.depot)}</div>${curCtl("to_veteranov")}<button class="acceptbtn" style="background:var(--blu)" onclick="acceptRec('${esc(r.key)}')">Вернуть ${Math.abs(r.trains_delta)} ${trWord(Math.abs(r.trains_delta))} в депо</button><div class="why">${esc(r.reason)}</div>${accBlock()}${chips}`;
+  }else if(ap.length){el.className="card action ok";
+    el.innerHTML=`<div class="kicker">Рекомендация принята</div><div class="bigline"><b>Дополнительных действий не требуется</b></div><div class="muted">Прогноз на 2 часа с учётом принятого: загрузка перегонов в пределах плана.</div>${curCtl("to_veteranov")}${accBlock()}${chips}`;
   }else{el.className="card action ok";
-    el.innerHTML=`<div class="kicker">Рекомендация диспетчеру</div><div class="bigline"><b>Действий не требуется</b></div><div class="muted">Прогноз на 2 часа: нагрузка перегонов в пределах плана графика.</div>${chips}`}
+    el.innerHTML=`<div class="kicker">Рекомендация диспетчеру</div><div class="bigline"><b>Действий не требуется</b></div><div class="muted">Прогноз на 2 часа: нагрузка перегонов в пределах плана графика.</div>${curCtl("to_veteranov")}${chips}`}
+}
+
+/* ---------- загрузка до / после ---------- */
+function renderUtil(){
+  const u=D.util_series,n=u.t.length,W=640,H=210,pl=44,pr=14,pt=22,pb=28,x=i=>pl+i*(W-pl-pr)/(n-1);
+  const vals=[...u.before,...u.after].filter(v=>v!=null),mx=Math.max(1.2,Math.max(...vals)*1.06),y=v=>pt+(H-pt-pb)*(1-v/mx);
+  const has=u.after.some((v,i)=>v!=null&&u.before[i]!=null&&Math.abs(v-u.before[i])>0.004);
+  const path=(arr,a=0,b=n-1)=>{let d="",open=false;for(let i=a;i<=b;i++){const v=arr[i];if(v==null){open=false;continue}d+=(open?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)+" ";open=true}return d};
+  let o="";const nowx=x(u.now_index);
+  [0,.5,1].forEach(g=>{const yy=y(g);o+=`<line x1="${pl}" y1="${yy}" x2="${W-pr}" y2="${yy}" stroke="${g===1?"#ff5a4f":"#202938"}" stroke-width="${g===1?1.2:1}" ${g===1?'stroke-dasharray="5 4" stroke-opacity=".7"':""}/><text x="${pl-8}" y="${yy+4}" text-anchor="end" fill="${g===1?"#ff5a4f":"#8592a5"}" font-size="11">${Math.round(g*100)}%</text>`});
+  o+=`<line x1="${pl}" y1="${y(u.u_hi)}" x2="${W-pr}" y2="${y(u.u_hi)}" stroke="#f5b942" stroke-dasharray="2 5" stroke-opacity=".8"/><text x="${W-pr-2}" y="${y(u.u_hi)-4}" text-anchor="end" fill="#f5b942" font-size="10.5">порог рекомендаций ${Math.round(u.u_hi*100)}%</text>`;
+  o+=`<rect x="${nowx}" y="${pt}" width="${W-pr-nowx}" height="${H-pt-pb}" fill="#ffffff" fill-opacity=".03"/>`;
+  const cb=has?"#ff5a4f":"#e8edf4";
+  o+=`<path d="${path(u.before,0,u.now_index)}" fill="none" stroke="${cb}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="${path(u.before,u.now_index)}" fill="none" stroke="${cb}" stroke-width="3" stroke-dasharray="7 5" stroke-linecap="round"/>`;
+  if(has)o+=`<path d="${path(u.after,u.now_index)}" fill="none" stroke="#34d399" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  o+=`<line x1="${nowx}" y1="${pt}" x2="${nowx}" y2="${H-pb}" stroke="#ff5a4f" stroke-width="1.5"/><text x="${nowx+6}" y="${pt+10}" fill="#ff5a4f" font-size="11" font-weight="700">сейчас</text>`;
+  u.t.forEach((t,i)=>{if(i%3===1||i===n-1)o+=`<text x="${x(i)}" y="${H-10}" text-anchor="middle" fill="#8592a5" font-size="11">${t}</text>`});
+  const pk=(arr)=>{let m=-1,im=-1;for(let i=u.now_index;i<n;i++){if(arr[i]!=null&&arr[i]>m){m=arr[i];im=i}}return [m,im]};
+  const [mb,ib]=pk(u.before);
+  if(ib>=0)o+=`<text x="${Math.min(x(ib),W-pr-14)}" y="${y(mb)-8}" text-anchor="middle" fill="${cb}" font-size="12" font-weight="700">${Math.round(mb*100)}%</text>`;
+  if(has){const [ma,ia]=pk(u.after);if(ia>=0)o+=`<text x="${Math.min(x(ia),W-pr-14)}" y="${y(ma)+16}" text-anchor="middle" fill="#34d399" font-size="12" font-weight="700">${Math.round(ma*100)}%</text>`}
+  o+=`<g font-size="11.5"><rect x="${pl+6}" y="${pt-16}" width="10" height="3" fill="${cb}"/><text x="${pl+22}" y="${pt-11}" fill="#aab5c5">${has?"без принятого":"по графику"}</text>${has?`<rect x="${pl+112}" y="${pt-16}" width="10" height="3" fill="#34d399"/><text x="${pl+128}" y="${pt-11}" fill="#aab5c5">с принятым интервалом</text>`:""}</g>`;
+  $("uchart").innerHTML=o;
 }
 
 /* ---------- график ---------- */
@@ -207,11 +270,13 @@ function renderChart(){
   if(f.length){const base=[[s.now_index,s.actual[s.now_index]],...f.map(p=>[p[0],p[1]])];
     o+=`<path d="${base.map((p,k)=>(k?"L":"M")+x(p[0])+" "+y(p[1])).join(" ")} L${x(f[f.length-1][0])} ${y(0)} L${x(s.now_index)} ${y(0)}Z" fill="#5aa9ff" fill-opacity=".10"/>`}
   o+=`<path d="${path(s.norm)}" fill="none" stroke="#8592a5" stroke-width="2" stroke-dasharray="2 5"/>`;
+  if(s.hour_ago&&s.hour_ago.some(v=>v!=null))o+=`<path d="${path(s.hour_ago)}" fill="none" stroke="#f5b942" stroke-width="2.5" stroke-dasharray="3 4" stroke-linecap="round"/>`;
   o+=`<path d="${path(s.actual)}" fill="none" stroke="#e8edf4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
   if(f.length)o+=`<path d="M${x(s.now_index)} ${y(s.actual[s.now_index])} ${f.map(p=>"L"+x(p[0])+" "+y(p[1])).join(" ")}" fill="none" stroke="#5aa9ff" stroke-width="3" stroke-dasharray="7 5" stroke-linecap="round"/>`;
   o+=`<line x1="${nowx}" y1="${pt}" x2="${nowx}" y2="${H-pb}" stroke="#ff5a4f" stroke-width="1.5"/><text x="${nowx+6}" y="${pt+10}" fill="#ff5a4f" font-size="11" font-weight="700">сейчас</text>`;
   s.t.forEach((t,i)=>{if(i%3===0||i===n-1)o+=`<text x="${x(i)}" y="${H-10}" text-anchor="middle" fill="#8592a5" font-size="11">${t}</text>`});
-  o+=`<g font-size="11.5"><rect x="${pl+6}" y="${pt}" width="10" height="3" fill="#e8edf4"/><text x="${pl+22}" y="${pt+5}" fill="#aab5c5">факт</text><rect x="${pl+66}" y="${pt}" width="10" height="3" fill="#5aa9ff"/><text x="${pl+82}" y="${pt+5}" fill="#aab5c5">прогноз</text><rect x="${pl+144}" y="${pt}" width="10" height="3" fill="#8592a5"/><text x="${pl+160}" y="${pt+5}" fill="#aab5c5">норма</text></g>`;
+  o+=`<g font-size="11.5"><rect x="${pl+6}" y="${pt}" width="10" height="3" fill="#e8edf4"/><text x="${pl+22}" y="${pt+5}" fill="#aab5c5">факт</text><rect x="${pl+66}" y="${pt}" width="10" height="3" fill="#5aa9ff"/><text x="${pl+82}" y="${pt+5}" fill="#aab5c5">прогноз</text><rect x="${pl+144}" y="${pt}" width="10" height="3" fill="#8592a5"/><text x="${pl+160}" y="${pt+5}" fill="#aab5c5">норма</text><rect x="${pl+210}" y="${pt}" width="10" height="3" fill="#f5b942"/><text x="${pl+226}" y="${pt+5}" fill="#aab5c5">прогноз, сделанный за час</text></g>`;
+  {const pp=(s.hour_ago||[]).map((v,i)=>v!=null&&s.actual[i]!=null?[v,s.actual[i]]:null).filter(Boolean);if(pp.length>=2){const e=pp.reduce((a,p)=>a+Math.abs(p[0]-p[1]),0)/pp.reduce((a,p)=>a+p[1],0)*100;o+=`<text x="${W-pr}" y="${pt+5}" text-anchor="end" fill="#f5b942" font-size="11.5">ошибка прогноза за час: ${e.toFixed(1)}%</text>`}}
   $("chart").innerHTML=o;
 }
 
